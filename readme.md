@@ -30,3 +30,9 @@ Rossignol graphical user interface is written using DWT, the D bindings to the
 SWT toolkit. This can be found at the DWT github repository:
 
 * https://github.com/d-widget-toolkit/dwt
+
+## Trivia
+
+Rossignol (pronounced ross-in-yoll) is the french for nightingale. The name was 
+chosen because the first three consonant letters are RSS. I also liked the idea 
+of a bird taking off to fetch the news.
