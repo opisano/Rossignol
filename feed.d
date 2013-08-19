@@ -222,6 +222,26 @@ public:
 		return added;
 	}
 
+	/**
+	 * Removes old articles.
+	 * 
+	 * Articles older than the date passed in parameter are 
+	 * removed from this feed.
+	 */
+	void removeOldArticles(time_t threshold)
+	out
+	{
+		foreach (art; m_articles)
+		{
+			assert (art.getTime() >= threshold);
+		}
+	}
+	body
+	{
+		auto moreRecent = m_articles.filter!(a => a.getTime() >= threshold);
+		m_articles = moreRecent.array();
+	}
+
 	string toXML() const
 	{
 		auto buffer = appender!string(format("<feed name=\"%s\" url=\"%s\" link=\"%s\" ", xml.parser.Parser.encodeEntities(m_name), m_url, m_link));
