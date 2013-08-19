@@ -299,12 +299,22 @@ shared(FeedInfo)[] loadFeedsFromXML(string filename)
 	return result;
 }
 
-
+/**
+ * Abstract Base class for Feed parsing strategy.
+ *
+ * Feed decoding is done using the Strategy design pattern. All 
+ * the parsing classes derive from this class, which is an XML content handler
+ * (we can safely assume that all the feed formats are based on XML). 
+ */
 abstract class FeedStrategy : ContentHandler
 {
 protected:
 	FeedContentHandler m_owner;
 public:
+
+	/**
+	 * Creates a new strategy for the FeedContentHandler passed in parameter.
+	 */
 	this(FeedContentHandler owner)
 	{
 		m_owner = owner;
@@ -383,6 +393,10 @@ public:
 		else if (qName == "feed")
 		{
 			m_owner.setStrategy(new AtomStrategy(m_owner));
+		}
+		else if (localName == "RDF")
+		{
+			m_owner.setStrategy(new RSS10Strategy(m_owner));
 		}
 
 		m_firstElement = false;
@@ -1202,6 +1216,185 @@ public:
 	{
 	}
 }
+
+/**
+ * Strategy pattern for parsing RSS 1.0 document.
+ */
+final class RSS10Strategy : FeedStrategy
+{
+	bool m_inChannel;
+	bool m_inTitle;
+	bool m_inLink;
+	bool m_inDescription;
+	bool m_inItems;
+	bool m_inItem;
+	bool m_inDcDate;
+	bool m_inDcCreator;
+
+	struct RSS10Item
+	{
+		string title;
+		string link;
+		string creator;
+		string description;
+		time_t updated;
+	}
+
+	struct RSS10Channel
+	{
+		string title;
+		string link;
+		string description;
+		string image;
+		Appender!(RSS10Item[]) items;
+	}
+
+	RSS10Item    m_currentItem;
+	RSS10Channel m_currentChannel;
+
+
+public:
+	this(FeedContentHandler owner)
+	{
+		super(owner);
+	}
+
+	void startDocument()
+	{
+		// Nothing to do
+	}
+
+	void endDocument()
+	{
+		// publish the parsed feed as a FeedInfo object.
+		auto items = m_currentChannel.items.data();
+		auto articles = uninitializedArray!(FeedArticle[])(items.length);
+		foreach (i, item; items)
+		{
+			articles[i] = new FeedArticle(xml.parser.Parser.translateEntities(item.title), 
+										  xml.parser.Parser.translateEntities(item.creator), 
+										  xml.parser.Parser.translateEntities(item.link),
+										  item.updated);
+		}
+		auto feedInfo = new shared FeedInfo(xml.parser.Parser.translateEntities(m_currentChannel.title),  
+											m_owner.m_originURL, m_currentChannel.link, 
+											assumeUnique(articles));
+		m_owner.setFeedInfo(feedInfo);
+	}
+
+	void startElement(string uri, string localName, string qName, const ref Attributes atts)
+	{
+		if (localName == "channel")
+		{
+			m_inChannel = true;
+		}
+		else if (localName == "title")
+		{
+			m_inTitle = true;
+		}
+		else if (localName == "description")
+		{
+			m_inDescription = true;
+		}
+		else if (localName == "image")
+		{
+			auto index = atts.getIndex("rdf:resource");
+			if (index != -1)
+			{
+				m_currentChannel.image = atts.getValue(index);
+			}
+		}
+		else if (localName == "item")
+		{
+			m_inItem = true;
+		}
+		else if (qName == "dc:date")
+		{
+			m_inDcDate = true;
+		}
+		else if (qName == "dc:creator")
+		{
+			m_inDcCreator = true;
+		}
+	}
+
+	void characters(string s)
+	{
+		if (m_inChannel)
+		{
+			if (m_inTitle)
+			{
+				m_currentChannel.title = s;
+			}
+			else if (m_inLink)
+			{
+				m_currentChannel.link = s;
+			}
+			else if (m_inDescription)
+			{
+				m_currentChannel.description = s;
+			}
+		}
+		else if (m_inItem)
+		{
+			if (m_inTitle)
+			{
+				m_currentItem.title = s;
+			}
+			else if (m_inLink)
+			{
+				m_currentItem.link = s;
+			}
+			else if (m_inDescription)
+			{
+				m_currentItem.description = s;
+			}
+			else if (m_inDcDate)
+			{
+				m_currentItem.updated = SysTime.fromISOExtString(s).toUnixTime();
+			}
+			else if (m_inDcCreator)
+			{
+				m_currentItem.creator = s;
+			}
+		}
+	}
+
+	void endElement(string uri, string localName, string qName)
+	{
+		if (localName == "channel")
+		{
+			m_inChannel = false;
+		}
+		else if (localName == "title")
+		{
+			m_inTitle = false;
+		}
+		else if (localName == "description")
+		{
+			m_inDescription = false;
+		}
+		else if (localName == "item")
+		{
+			m_currentChannel.items.put(m_currentItem);
+			m_currentItem = RSS10Item.init;
+			m_inItem = false;
+		}
+		else if (qName == "dc:date")
+		{
+			m_inDcDate = false;
+		}
+		else if (qName == "dc:creator")
+		{
+			m_inDcCreator = false;
+		}
+	}
+
+	void processingInstruction(string target, string data)
+	{
+	}
+}
+
 
 final class FeedContentHandler : ContentHandler
 {
