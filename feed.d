@@ -874,6 +874,7 @@ final class RSS20Strategy : FeedStrategy
 	bool    m_inAuthor;
 	bool    m_inComments;
 	bool    m_inGuid;
+	bool    m_inDcDate;
 
 	static struct RSSItem
 	{
@@ -884,7 +885,7 @@ final class RSS20Strategy : FeedStrategy
 		string category;
 		string comments;
 		string guid;
-		string pubDate;
+		time_t pubDate;
 		string source;
 		string image;
 	}
@@ -898,8 +899,8 @@ final class RSS20Strategy : FeedStrategy
 		string copyright;
 		string managingEditor;
 		string webMaster;
-		string pubDate;
-		string lastBuildDate;
+		time_t pubDate;
+		time_t lastBuildDate;
 		string category;
 		string generator;
 		string ttl;
@@ -908,9 +909,6 @@ final class RSS20Strategy : FeedStrategy
 
 	RSSFeed m_currentFeed;
 	RSSItem m_currentItem;
-
-	
-	
 
 public:
 	this(FeedContentHandler owner)
@@ -931,9 +929,12 @@ public:
 		foreach (i, item; items)
 		{
 			articles[i] = new FeedArticle(xml.parser.Parser.translateEntities(item.title), 
-										  item.author, item.link, convertDate(item.pubDate).toUnixTime());
+										  xml.parser.Parser.translateEntities(item.author), 
+										  xml.parser.Parser.translateEntities(item.link),
+										  item.pubDate);
 		}
-		auto feedInfo = new shared FeedInfo(xml.parser.Parser.translateEntities(m_currentFeed.title),  m_owner.m_originURL, m_currentFeed.link, 
+		auto feedInfo = new shared FeedInfo(xml.parser.Parser.translateEntities(m_currentFeed.title),  
+											m_owner.m_originURL, m_currentFeed.link, 
 											assumeUnique(articles));
 		m_owner.setFeedInfo(feedInfo);
 	}
@@ -1003,6 +1004,10 @@ public:
 		else if (qName == "comments")
 		{
 			m_inComments = true;
+		}
+		else if (qName == "dc:date")
+		{
+			m_inDcDate = true;
 		}
 	}
 
@@ -1074,6 +1079,10 @@ public:
 		{
 			m_inComments = false;
 		}
+		else if (qName == "dc:date")
+		{
+			m_inDcDate = false;
+		}
 	}
 
 	void characters(string s)
@@ -1110,11 +1119,24 @@ public:
 			}
 			else if (m_inPubDate)
 			{
-				m_currentFeed.pubDate = s;
+				if (!s.empty)
+				{
+					m_currentFeed.pubDate = convertDate(s).toUnixTime();
+				}
 			}
 			else if (m_inLastBuildDate)
 			{
-				m_currentFeed.lastBuildDate = s;
+				if (!s.empty)
+				{
+					m_currentFeed.lastBuildDate = convertDate(s).toUnixTime();
+				}
+			}
+			else if (m_inDcDate)
+			{
+				if (!s.empty)
+				{
+					m_currentFeed.lastBuildDate = m_currentFeed.pubDate = SysTime.fromISOExtString(s).toUnixTime();
+				}
 			}
 			else if (m_inCategory)
 			{
@@ -1161,7 +1183,17 @@ public:
 			}
 			else if (m_inPubDate)
 			{
-				m_currentItem.pubDate = s;
+				if (!s.empty)
+				{
+					m_currentItem.pubDate = convertDate(s).toUnixTime();
+				}
+			}
+			else if (m_inDcDate)
+			{
+				if (!s.empty)
+				{
+					m_currentItem.pubDate = SysTime.fromISOExtString(s).toUnixTime();
+				}
 			}
 		}
 	}

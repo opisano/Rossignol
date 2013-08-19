@@ -45,6 +45,15 @@ int getTZOffset(string tz) @disable
 		return 0;
 }
 
+class DateFormatException : Exception
+{
+public:
+	this(string msg)
+	{
+		super(msg);
+	}
+}
+
 /**
 * Takes a date indication in RFC 822 format and converts it to a 
 * SysTime object.
@@ -97,6 +106,6 @@ SysTime convertDate(string rfc822Date)
 	}
 	else
 	{
-		return SysTime(DateTime(1970, 1, 1, 0, 0, 0));
+		throw new DateFormatException("Cannot recognize date format.");
 	}
 }

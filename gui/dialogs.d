@@ -19,6 +19,8 @@ Copyright 2013 Olivier Pisano
 
 module gui.dialogs;
 
+import std.datetime;
+
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -31,6 +33,7 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
+import gui.mainwindow;
 
 struct AddFeedResult
 {
@@ -127,5 +130,20 @@ public:
 			}
 		}
 		return m_result;
+	}
+}
+
+final class AboutDialog : Dialog
+{
+	Shell m_dialog;
+public:
+	this(MainWindow parent, int style)
+	{
+		super(parent.m_shell, style);
+	}
+
+	void open()
+	{
+		Label lbl;
 	}
 }

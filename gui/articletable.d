@@ -41,6 +41,17 @@ import feed;
 import gui.mainwindow;
 import properties;
 
+/*----------------------------------------------------------------------------*
+ *                                                                            *
+ *    Sorting facilities                                                      *
+ *                                                                            *
+ *                                                                            *
+ *----------------------------------------------------------------------------*/
+
+
+/**
+ * Sort mode (each by table column)
+ */
 private enum SortMode
 {
 	title,
@@ -99,7 +110,10 @@ bool compByTime(SortOrder order = SortOrder.ascending)(Article a, Article b) pur
 	}
 }
 
-
+/**
+ * OS-dependant facility to open an URL by the user default 
+ * browser.
+ */
 private void displayURL(string url)
 {
 	version (Windows)
@@ -110,24 +124,39 @@ private void displayURL(string url)
 	}
 }
 
+/**
+ * Switch sort order.
+ */
 private SortOrder switchOrder(SortOrder order)
 {
 	return order == SortOrder.ascending ? SortOrder.descending : SortOrder.ascending;
 }
 
+/**
+ * Provides a way of displaying a list of articles, sorting them.
+ */
 final class ArticleTable : AdjustableComponent
 {
+	// The actual SWT widget.
 	Table					m_tblArticles;
+	// reference to the application main window
 	MainWindow				m_mainWindow;
+	// the feed from which we display the articles
 	shared FeedInfo			m_feedInfo;
+	// a copy of the feed articles, for sorting
 	Rebindable!Article[]    m_articles;
+	// table columns
 	TableColumn             m_colTitle;
 	TableColumn             m_colAuthor;
 	TableColumn             m_colDate;
 	SortMode                m_sortMode;
 	SortOrder               m_sortOrder;
+	// last column clicked
 	TableColumn             m_lastColumn;
 
+	/**
+	 * Provides a callback for displaying an item 
+	 */
 	class CallbackListener : Listener
 	{
 	public:
@@ -141,10 +170,13 @@ final class ArticleTable : AdjustableComponent
 			item.setText(1, article.getAuthor());
 			{
 				auto t = article.getTime();
-				const tm* utcTime = gmtime(&t);
-				char[50] buffer;
-				auto size = strftime(buffer.ptr, buffer.length, "%d/%m/%Y %T", utcTime);
-				item.setText(2, to!string(buffer[0..size])); 
+				if (t != time_t.init)
+				{
+					const tm* utcTime = gmtime(&t);
+					char[50] buffer;
+					auto size = strftime(buffer.ptr, buffer.length, "%d/%m/%Y %T", utcTime);
+					item.setText(2, to!string(buffer[0..size]));
+				}
 			}
 			item.setData(cast(FeedArticle)article);
 		}

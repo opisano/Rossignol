@@ -25,17 +25,26 @@ import core.time;
 import java.lang.Runnable;
 import org.eclipse.swt.graphics.Image;
 
-
+/**
+ * This class provides a way of displaying an animation on one 
+ * or several widgets. 
+ */
 class MultiAnimationThread(Widget) : Thread
 {
+	/// Animation images 
 	Image[]				m_images;
+	/// Stores widget original images (before the animation)
 	Image[Widget]		m_targetImages;
+	// Set of widgets to display the animation on.
 	Widget[Widget]	    m_targets;
+	// Delay between each animation frame
 	immutable Duration	m_delay;
+	// loop flag (for terminating the thread)
 	shared bool			m_active;
 
 	void run()
 	{
+		// image index 
 		shared int index;
 		while (atomicLoad(m_active) == true)
 		{
@@ -69,6 +78,13 @@ class MultiAnimationThread(Widget) : Thread
 
 public:
 
+	/**
+	 * Creates an AnimationThread object. 
+	 * params:
+	 * widgets=widgets to display animation on.
+	 * duration=period between each animation frame.
+	 * images=animation frames.
+	 */
 	this(Widget[] widgets, Duration duration, Image[] images)
 	{
 		super(&run);
@@ -84,6 +100,10 @@ public:
 		atomicStore(m_active, true);
 	}
 
+	/**
+	 * Removes a widget from the set and restores its original 
+	 * image (if any), ending its animation.
+	 */
 	void remove(Widget w)
 	{
 		if (w !in m_targets || w !in m_targetImages)
@@ -94,6 +114,8 @@ public:
 		m_targets.remove(w);
 		m_targetImages.remove(w);
 
+		// if there is no more targets, end the animation 
+		// thread. 
 		if (m_targets.length == 0)
 		{
 			atomicStore(m_active, false);
