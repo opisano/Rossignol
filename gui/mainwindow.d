@@ -28,6 +28,8 @@ import std.net.curl;
 import std.parallelism;
 import std.string;
 
+import std.c.time;
+
 import java.lang.Runnable;
 
 import org.eclipse.swt.SWT;
@@ -83,10 +85,12 @@ class MainWindow : AdjustableComponent
 	FeedTree     m_treeFeeds;
 	ArticleTable m_tblArticles;
 	Menu		 m_fileMenu;
+	Menu         m_editMenu;
 	MenuItem     m_newFeedItem;
 	MenuItem     m_newGroup;
 	MenuItem     m_refreshAllFeeds;
 	MenuItem	 m_exitItem;
+	MenuItem     m_removeOldFeeds;
 	
 	ResourceManager m_resMan;
 
@@ -106,6 +110,7 @@ class MainWindow : AdjustableComponent
 	void createMenus()
 	{
 		Menu menuBar = new Menu(m_shell, SWT.BAR);
+		// Create File Menu
         MenuItem cascadeFileMenu = new MenuItem(menuBar, SWT.CASCADE);
         cascadeFileMenu.setText("&File");
 
@@ -129,9 +134,20 @@ class MainWindow : AdjustableComponent
 		new MenuItem(m_fileMenu, SWT.SEPARATOR);
 
         m_exitItem= new MenuItem(m_fileMenu, SWT.PUSH);
-        m_exitItem.setText("&Exit");
+        m_exitItem.setText("E&xit");
         m_shell.setMenuBar(menuBar);
 
+		// Create edit menu
+		MenuItem cascadeEditMenu = new MenuItem(menuBar, SWT.CASCADE);
+		cascadeEditMenu.setText("&Edit");
+		m_editMenu = new Menu(m_shell, SWT.DROP_DOWN);
+		cascadeEditMenu.setMenu(m_editMenu);
+
+		m_removeOldFeeds = new MenuItem(m_editMenu, SWT.PUSH);
+		m_removeOldFeeds.setText("Remove old feeds...");
+
+
+		// File menu items
 		m_newFeedItem.addSelectionListener(
 			new class SelectionAdapter
 			{
@@ -165,6 +181,16 @@ class MainWindow : AdjustableComponent
 				override public void widgetSelected(SelectionEvent e)
 				{
 					m_shell.getDisplay().dispose();
+				}
+			});
+
+		// edit menu items
+		m_removeOldFeeds.addSelectionListener(
+			new class SelectionAdapter
+			{
+				override public void widgetSelected(SelectionEvent e)
+				{
+					removeOldFeedsAction();
 				}
 			});
 	}
@@ -261,6 +287,48 @@ class MainWindow : AdjustableComponent
 		auto fi2 = getFeedInfo(fi.getURL());
 		size_t newArticlesCount = fi.add(fi2.getArticles());
 
+	}
+
+	static void removeOldFeedsInItem(TreeItem ti, shared(FeedInfo) fi, time_t threshold, ArticleTable table, MultiAnimationThread!TreeItem ath)
+	{
+		if (ti is null || ti.isDisposed())
+		{
+			return;
+		}
+
+		auto disp = ti.getDisplay();
+		if (disp is null || disp.isDisposed())
+		{
+			return;
+		}
+
+		// signal working in background
+		disp.syncExec(new class Runnable
+					  {
+						  public override void run()
+						  {
+							  if (!ath.isRunning)
+								  ath.start();
+						  }
+					  });
+
+		// stop the animation once this function has been terminated.
+		scope (exit)
+		{
+			disp.asyncExec(new class Runnable
+						   {
+							   public override void run()
+							   {
+								   ath.remove(ti);
+								   if (table.getDisplayedFeed() == fi)
+								   {
+									   table.refresh();
+								   }
+							   }
+						   });
+		}
+
+		fi.removeOldArticles(threshold);
 	}
 
 public:
@@ -365,6 +433,29 @@ public:
 		{
 			auto updateTask = task!updateTreeItem(items[i], fis[i], m_tblArticles, ath);
 			taskPool.put(updateTask);
+		}
+	}
+
+	@Action
+	void removeOldFeedsAction()
+	{
+		auto dlg = new RemoveOldFeedsDialog(this, 0);
+		int choice = dlg.open();
+		if (choice != -1)
+		{
+			TreeItem[] items = m_treeFeeds.getFeedItems();
+			shared(FeedInfo)[] fis = m_treeFeeds.getFeedInfo(items);
+			auto ath = new MultiAnimationThread!TreeItem(items, dur!"msecs"(50), m_resMan.getImageMap16());
+
+			auto secsInOneDay = 60 * 60 * 24;
+			time_t t_now = time(null);
+			time_t threshold = t_now - (choice * secsInOneDay);
+
+			foreach (i; 0..items.length)
+			{
+				auto removeTask = task!removeOldFeedsInItem(items[i], fis[i], threshold, m_tblArticles, ath);
+				taskPool.put(removeTask);
+			}
 		}
 	}
 

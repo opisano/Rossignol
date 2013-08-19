@@ -232,7 +232,7 @@ public:
 					const remainingBytes = text.length - i;
 
 					// is it a comment ?
-					if ((remainingBytes >= 3 ) // <!--
+					if ((remainingBytes >= 4 ) // <!--
 							&& (text[i+1..i+4] == "!--"))
 					{
 						// transfert control to comment state
@@ -242,7 +242,7 @@ public:
 						break;
 					}
 					// is it a CDATA section ?
-					else if ((remainingBytes >= 8)
+					else if ((remainingBytes >= 9)
 							&& (text[i+1..i+9] == "![CDATA["))
 					{
 						m_owner.m_states.insertFront(m_cdataState);
@@ -250,8 +250,8 @@ public:
 						m_owner.m_states.removeFront();
 						break;
 					}
-					else if ((remainingBytes >= 8)
-							 && (text[i+1..i+8] == "!DOCTYPE"))
+					else if ((remainingBytes >= 9)
+							 && (text[i+1..i+9] == "!DOCTYPE"))
 					{
 						// transfert control to DTD state
 						m_owner.m_states.insertFront(m_DTDState);
@@ -889,13 +889,14 @@ public:
 		}
 		else
 		{
-			auto semicolonIndex = std.string.indexOf(s[ampIndex+1..$], ';') + ampIndex + 1;
+			auto semicolonIndex = std.string.indexOf(s[ampIndex+1..$], ';');
 			if (semicolonIndex == -1)
 			{
 				return s;
 			}
 			else
 			{
+				semicolonIndex += (ampIndex + 1);
 				dchar code;
 				if (s[ampIndex+1] == '#') // if numerical entity
 				{

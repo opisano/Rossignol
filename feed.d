@@ -239,7 +239,7 @@ public:
 	body
 	{
 		auto moreRecent = m_articles.filter!(a => a.getTime() >= threshold);
-		m_articles = moreRecent.array();
+		m_articles = std.array.array(moreRecent);
 	}
 
 	string toXML() const
