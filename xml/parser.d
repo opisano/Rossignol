@@ -880,50 +880,125 @@ public:
 		}
 	}
 
+	/**
+	 * Decodes entities. 
+	 */
 	static string translateEntities(string s)
 	{
+		/**
+		 * Utility function that searches for the end of current entity,
+	     * (a semicolon char). The search is stopped as soon as an invalid
+		 * entity character is encountered
+		 */
+		ptrdiff_t getEntityEndIndex(string txt)
+		{
+			size_t offset;
+			dchar ch = std.utf.decodeFront(txt, offset);
+			if (!isNameCharStart(ch) && ch != '#')
+			{
+				return -1;
+			}
+
+			foreach (size_t i, dchar ch; txt)
+			{
+				// if found semicolon
+				if (ch == ';')
+				{
+					return i + offset;
+				}
+				else if (!isNameChar(ch))
+				{
+					return -1;
+				}
+			}
+			return -1;
+		}
+
+		// search for an ampersand as entity starter
 		auto ampIndex = std.string.indexOf(s, '&');
 		if (ampIndex == -1)
 		{
-			return s;
+			// best case: no string copy
+			return s; 
 		}
 		else
 		{
-			auto semicolonIndex = std.string.indexOf(s[ampIndex+1..$], ';');
+			// locate corresponding semicolon
+			size_t semicolonIndex = getEntityEndIndex(s[ampIndex+1..$]);
+
+			// if no semicolon found, XML is invalid
 			if (semicolonIndex == -1)
 			{
-				return s;
+				throw new SAXParseException("Incorrect entity encoding", null, null, 1, semicolonIndex);
 			}
 			else
 			{
+				auto buffer = appender!string();
+				size_t origin;
+
+				// calculate semicolon index from the start of the string 
+				// and not from ampIndex
 				semicolonIndex += (ampIndex + 1);
-				dchar code;
-				if (s[ampIndex+1] == '#') // if numerical entity
+				
+				// While there is still to decode
+				while (ampIndex != -1 && semicolonIndex != -1)
 				{
-					if (s[ampIndex+2] == 'x') // hexadecimal 
+					// append all the text before the "&" in buffer
+					buffer.put(s[origin..ampIndex]);
+
+					// decode entity into a UTF-32 character
+					dchar code;
+					if (s[ampIndex+1] == '#') // if numerical entity
 					{
-						code = toInt(s[ampIndex+3..semicolonIndex], 16);
-					}
-					else	// decimal
-					{
-						code = to!int(s[ampIndex+2..semicolonIndex]);
-					}
-				}
-				else
-				{
-					auto ent = s[ampIndex+1..semicolonIndex];
-					auto found = ent in entitiesMap;
-					if (found)
-					{
-						code = *found;
+						if (s[ampIndex+2] == 'x') // hexadecimal 
+						{
+							code = toInt(s[ampIndex+3..semicolonIndex], 16);
+						}
+						else	// decimal
+						{
+							code = to!int(s[ampIndex+2..semicolonIndex]);
+						}
 					}
 					else
 					{
-						code = ' ';
+						auto ent = s[ampIndex+1..semicolonIndex];
+						auto found = ent in entitiesMap;
+						if (found)
+						{
+							code = *found;
+						}
+						else
+						{
+							code = ' ';
+						}
+					}
+
+					// append the decoded entity in the buffer
+					buffer.put(code);
+
+					// search for the next entity occurence
+					origin = semicolonIndex+1;
+					ampIndex = std.string.indexOf(s[origin..$], '&');
+					if (ampIndex != -1)
+					{
+						// calculate index from the start of the string 
+						ampIndex += origin;
+
+						// locate corresponding semicolon
+						semicolonIndex = getEntityEndIndex(s[ampIndex+1..$]);
+
+						// if no semicolon found, XML is invalid
+						if (semicolonIndex == -1)
+						{
+							throw new SAXParseException("Incorrect entity encoding", null, null, 1, semicolonIndex);
+						}
+						semicolonIndex += (ampIndex + 1);
 					}
 				}
 
-				return s[0..ampIndex] ~ to!string(code) ~ translateEntities(s[semicolonIndex+1..$]);
+				// append remaining data in the string
+				buffer.put(s[origin..$]);
+				return buffer.data();
 			}
 		}
 	}
