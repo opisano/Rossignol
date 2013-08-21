@@ -182,6 +182,9 @@ final class ArticleTable : AdjustableComponent
 		}
 	}
 
+	/**
+	 * Responds to a click on a column header to change the sorting mode.
+	 */
 	class SortListener : Listener
 	{
 	public:
@@ -210,6 +213,9 @@ final class ArticleTable : AdjustableComponent
 		}
 	}
 
+	/**
+	 * Sorts the table (yes, you could have figure it out).
+	 */
 	void sortTable(SortMode mode)
 	{
 		final switch (mode)
@@ -237,13 +243,18 @@ final class ArticleTable : AdjustableComponent
 	}
 
 public:
+	/**
+	 * Creates an article table
+	 */
 	this(MainWindow mainWindow, Composite parent, int style)
 	{
 		m_mainWindow = mainWindow;
+		// create the SWT widget
 		m_tblArticles = new Table(parent, SWT.MULTI | SWT.FULL_SELECTION| SWT.BORDER | SWT.VIRTUAL);
 		m_sortMode = SortMode.time;
 		m_sortOrder = SortOrder.descending;
 		
+		// create the table columns
 		m_colTitle = new TableColumn(m_tblArticles, SWT.NONE);
 		m_colTitle.setText("Title");
 		m_colTitle.setWidth(280);
@@ -254,7 +265,9 @@ public:
 		m_tblArticles.setHeaderVisible(true);
 		m_tblArticles.setLinesVisible(true);
 
-		m_tblArticles.addMouseListener(new class MouseAdapter
+		// On double click on a line, display the article in the user browser.
+		m_tblArticles.addMouseListener(
+			new class MouseAdapter
 			{
 				override public void mouseDoubleClick(MouseEvent e)
 				{
@@ -268,6 +281,7 @@ public:
 				}
 			});
 
+		// set up sorting abilities
 		auto sortListener = new SortListener;
 		m_colTitle.addListener(SWT.Selection, sortListener);
 		m_colAuthor.addListener(SWT.Selection, sortListener);
@@ -279,6 +293,9 @@ public:
 		m_tblArticles.pack();
 	}
 
+	/**
+	 * Change the feed content displayed in the table.
+	 */
 	void setFeedInfo(shared FeedInfo feedInfo)
 	{
 		if (feedInfo !is m_feedInfo)
@@ -297,6 +314,10 @@ public:
 		}
 	}
 
+	/**
+	 * Refresh the content of the feed displayed in the table. 
+	 * This method in called when a feed is refreshed and new articled have been found.
+	 */
 	void refresh()
 	{
 		auto count = m_feedInfo.getArticles().length;
@@ -311,6 +332,9 @@ public:
 		m_tblArticles.clear(0, count-1);
 	}
 
+	/**
+	 * Returns a reference to the feed currently displayed by this table.
+	 */
 	shared(FeedInfo) getDisplayedFeed()
 	{
 		return m_feedInfo;
