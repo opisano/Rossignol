@@ -30,9 +30,13 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.MouseAdapter;
 import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.graphics.Point;
+import org.eclipse.swt.graphics.Rectangle;
+import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Event;
+import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Listener;
+import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
@@ -40,6 +44,8 @@ import org.eclipse.swt.widgets.TableItem;
 import feed;
 import gui.mainwindow;
 import properties;
+
+
 
 /*----------------------------------------------------------------------------*
  *                                                                            *
@@ -242,6 +248,90 @@ final class ArticleTable : AdjustableComponent
 		m_sortMode = mode;
 	}
 
+	/**
+	 * Implement a fake tooltip
+	 */
+	class LabelListener : Listener
+	{
+	public:
+		override void handleEvent(Event event)
+		{
+			Label label = cast (Label) event.widget;
+			Shell shell = label.getShell();
+			final switch (event.type)
+			{
+			case SWT.MouseDown:
+				Event e = new Event;
+				e.item = cast(TableItem) label.getData("_TABLEITEM");
+				m_tblArticles.setSelection([cast(TableItem)e.item]);
+				m_tblArticles.notifyListeners(SWT.Selection, e);
+				// fall through
+
+			case SWT.MouseExit:
+				shell.dispose();
+				break;
+			}
+		}
+	}
+
+	class TableListener : Listener
+	{
+		Shell tip;
+		Label label;
+		LabelListener m_labelListener;
+
+	public:
+
+		this(LabelListener labelListener)
+		{
+			m_labelListener = labelListener;
+		}
+
+		override void handleEvent(Event event)
+		{
+			final switch (event.type)
+			{
+			case SWT.Dispose:
+			case SWT.KeyDown:
+			case SWT.MouseMove:
+				if (tip is null)
+				{
+					break;
+				}
+				tip.dispose();
+				tip = null;
+				label = null;
+				break;
+
+			case SWT.MouseHover:
+				TableItem item = m_tblArticles.getItem(new Point(event.x, event.y));
+				if (item !is null)
+				{
+					if (tip !is null && !tip.isDisposed())
+					{
+						tip.dispose();
+					}
+					tip = new Shell(m_mainWindow.m_shell, SWT.ON_TOP | SWT.TOOL);
+					tip.setLayout(new FillLayout);
+					label = new Label(tip, SWT.NONE);
+					auto disp = m_mainWindow.m_shell.getDisplay();
+					label.setForeground(disp.getSystemColor(SWT.COLOR_INFO_FOREGROUND));
+					label.setBackground(disp.getSystemColor(SWT.COLOR_INFO_BACKGROUND));
+					label.setData("_TABLEITEM", item);
+					Article art = cast(Article)item.getData();
+					label.setText(art.getDescription());
+					label.addListener(SWT.MouseExit, m_labelListener);
+					label.addListener(SWT.MouseDown, m_labelListener);
+					Point size = tip.computeSize(SWT.DEFAULT, SWT.DEFAULT);
+					Rectangle rect = item.getBounds(0);
+					Point pt = m_tblArticles.toDisplay(rect.x, rect.y);
+					tip.setBounds(pt.x, pt.y, size.x, size.y);
+					tip.setVisible(true);
+				}
+			}
+		}
+	}
+
 public:
 	/**
 	 * Creates an article table
@@ -287,6 +377,14 @@ public:
 		m_colAuthor.addListener(SWT.Selection, sortListener);
 		m_colDate.addListener(SWT.Selection, sortListener);
 		m_tblArticles.addListener(SWT.SetData, new CallbackListener);
+
+		// set tooltip abilities
+		auto labelListener = new LabelListener;
+		auto tableListener = new TableListener(labelListener);
+		m_tblArticles.addListener(SWT.Dispose, tableListener);
+		m_tblArticles.addListener(SWT.KeyDown, tableListener);
+		m_tblArticles.addListener(SWT.MouseMove, tableListener);
+		m_tblArticles.addListener(SWT.MouseHover, tableListener);
 
 		m_colAuthor.pack();
 		m_colDate.pack();
