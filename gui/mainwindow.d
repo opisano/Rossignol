@@ -24,8 +24,10 @@ import core.time;
 import std.algorithm;
 import std.conv;
 import std.exception;
+import std.file;
 import std.net.curl;
 import std.parallelism;
+import std.stdio;
 import std.string;
 
 import std.c.time;
@@ -76,14 +78,24 @@ enum Action;
 interface AdjustableComponent
 {
 	Properties getProperties();
-	void setProperties(Properties p);
+	void setProperties(const ref Properties p);
 }
 
+/**
+ * Our main window application class
+ */
 class MainWindow : AdjustableComponent
 {
+	/// SWT window
 	Shell		 m_shell;
+
+	SashForm     m_sashForm;
+	/// Feeds tree (on the left pane)
 	FeedTree     m_treeFeeds;
+	/// Articles table (on the right pane)
 	ArticleTable m_tblArticles;
+
+	// Menu items
 	Menu		 m_fileMenu;
 	Menu         m_editMenu;
 	MenuItem     m_newFeedItem;
@@ -91,9 +103,14 @@ class MainWindow : AdjustableComponent
 	MenuItem     m_refreshAllFeeds;
 	MenuItem	 m_exitItem;
 	MenuItem     m_removeOldFeeds;
+	MenuItem     m_removeHistory;
 	
+	// Stores and manages the lifecycle of our GUI images.
 	ResourceManager m_resMan;
 
+	/**
+	 * Loads the images used for the GUI
+	 */
 	void loadImages()
 	{
 		m_resMan = new ResourceManager(getDisplay());
@@ -101,6 +118,9 @@ class MainWindow : AdjustableComponent
 		m_resMan.loadImage("img/16x16/folder-new.png", "newgroup");
 		m_resMan.loadImage("img/rossignol.png", "appicon");
 		m_resMan.loadImage("img/16x16/view-refresh.png", "refresh");
+		m_resMan.loadImage("img/16x16/folder-open.png", "openFolder");
+		m_resMan.loadImage("img/16x16/folder.png", "closedFolder");
+		m_resMan.loadImage("img/16x16/feed.png", "feed");
 		m_resMan.loadImageMap16("img/16x16/process-working.png");
 	}
 
@@ -145,6 +165,9 @@ class MainWindow : AdjustableComponent
 
 		m_removeOldFeeds = new MenuItem(m_editMenu, SWT.PUSH);
 		m_removeOldFeeds.setText("Remove old feeds...");
+
+		m_removeHistory = new MenuItem(m_editMenu, SWT.PUSH);
+		m_removeHistory.setText("Remove feeds History");
 
 
 		// File menu items
@@ -193,6 +216,15 @@ class MainWindow : AdjustableComponent
 					removeOldFeedsAction();
 				}
 			});
+
+		m_removeHistory.addSelectionListener(
+			new class SelectionAdapter
+			{
+				override public void widgetSelected(SelectionEvent e)
+				{
+					removeHistoryAction();
+				}
+			});
 	}
 
 	/**
@@ -202,13 +234,14 @@ class MainWindow : AdjustableComponent
 	void createContent()
 	{
 		m_shell.setLayout(new FillLayout());
-		SashForm sform = new SashForm(m_shell, SWT.HORIZONTAL | SWT.SMOOTH);
-		m_treeFeeds = new FeedTree(this, sform, SWT.SINGLE | SWT.H_SCROLL | SWT.V_SCROLL);
+		m_sashForm = new SashForm(m_shell, SWT.HORIZONTAL | SWT.SMOOTH);
+		m_treeFeeds = new FeedTree(this, m_sashForm, SWT.SINGLE | SWT.H_SCROLL | SWT.V_SCROLL);
 		m_treeFeeds.loadFromFile();
-		m_tblArticles = new ArticleTable(this, sform, SWT.SINGLE | SWT.H_SCROLL | SWT.V_SCROLL);
-		sform.setWeights([1, 4]);
+		m_tblArticles = new ArticleTable(this, m_sashForm, SWT.SINGLE | SWT.H_SCROLL | SWT.V_SCROLL);
+		m_sashForm.setWeights([1, 4]);
 
-		m_shell.addListener(SWT.Close, new class Listener
+		m_shell.addListener(SWT.Close, 
+			new class Listener
 			{
 				override public void handleEvent(Event e)
 				{
@@ -223,12 +256,23 @@ class MainWindow : AdjustableComponent
 				}
 			});
 
-		m_treeFeeds.addSelectionListener(new class SelectionAdapter
+		m_treeFeeds.addSelectionListener(
+			new class SelectionAdapter
 			{
 				override public void widgetSelected(SelectionEvent e)
 				{
 					auto item = cast(TreeItem)e.item;
 					selectTreeItemAction(item);
+				}
+			});
+
+		m_shell.addListener(SWT.Close, 
+			new class Listener
+			{
+				override public void handleEvent(Event event)
+				{
+					saveProperties();
+					event.doit = true;
 				}
 			});
 	}
@@ -331,6 +375,61 @@ class MainWindow : AdjustableComponent
 		fi.removeOldArticles(threshold);
 	}
 
+	static void removeHistoryInItem(TreeItem ti,  shared(FeedInfo) fi, FeedTree tree, ArticleTable table, MultiAnimationThread!TreeItem ath)
+	{
+		if (ti is null || ti.isDisposed())
+		{
+			return;
+		}
+
+		auto disp = ti.getDisplay();
+		if (disp is null || disp.isDisposed())
+		{
+			return;
+		}
+
+		// signal working in background
+		disp.syncExec(new class Runnable
+					  {
+						  public override void run()
+						  {
+							  if (!ath.isRunning)
+								  ath.start();
+						  }
+					  });
+
+		auto fi2 = getFeedInfo(fi.getURL());
+
+		// stop the animation once this function has been terminated.
+		disp.asyncExec(
+			new class Runnable
+			{
+				public override void run()
+				{
+					tree.setFeedInfo(ti, fi2);
+					ath.remove(ti);
+					if (table.getDisplayedFeed() == fi)
+					{
+						table.refresh();
+					}
+				}
+			});
+
+	}
+
+	void saveProperties()
+	{
+		Properties props = getProperties();
+		auto settingsDir = buildPath(getSettingsDirectory(), "settings");
+		if (!settingsDir.exists())
+		{
+			settingsDir.mkdirRecurse();
+		}
+
+		auto filename = buildPath(settingsDir, "gui.properties");
+		props.writeToFile(filename);
+	}
+
 public:
 	this(Display display)
 	{
@@ -347,6 +446,18 @@ public:
 	{
 		m_shell.dispose();
 		m_resMan.dispose();
+	}
+
+	void loadProperties()
+	{
+		auto settingsFile = buildPath(getSettingsDirectory(), "settings",
+									  "gui.properties");
+		if (settingsFile.exists())
+		{
+			Properties props;
+			props.loadFromFile(settingsFile);
+			setProperties(props);
+		}
 	}
 
 	/**
@@ -459,6 +570,20 @@ public:
 		}
 	}
 
+	@Action
+	void removeHistoryAction()
+	{
+		TreeItem[] items = m_treeFeeds.getFeedItems();
+		shared(FeedInfo)[] fis = m_treeFeeds.getFeedInfo(items);
+		auto ath = new MultiAnimationThread!TreeItem(items, dur!"msecs"(50), m_resMan.getImageMap16());
+
+		foreach (i; 0..items.length)
+		{
+			auto removeTask = task!removeHistoryInItem(items[i], fis[i], m_treeFeeds, m_tblArticles, ath);
+			taskPool.put(removeTask);
+		}
+	}
+
 	/**
 	 * Add a feed to the feed list. 
 	 *
@@ -482,10 +607,14 @@ public:
 		}
 	}
 
+	/** 
+	 *Provides access to the GUI resources
+	 */
 	ResourceManager getResourceManager()
 	{
 		return m_resMan;
 	}
+
 
 	Properties getProperties()
 	{
@@ -499,15 +628,49 @@ public:
 		props["MAINWINDOW_WIDTH"] = to!string(size.x);
 		props["MAINWINDOW_HEIGHT"] = to!string(size.y);
 
-		// TODO get Sashform weights
-
+		// get Sashform weights
+		/*auto weights = m_sashForm.getWeights();
+		props["MAINWINDOW_SASHFORM_WEIGHT_LEFT"] = to!string(weights[0]);
+		props["MAINWINDOW_SASHFORM_WEIGHT_RIGHT"] = to!string(weights[1]);*/
 
 		return props;
 	}
 
-	void setProperties(Properties props)
+	void setProperties(const ref Properties props)
 	{
-		//TODO
+		auto wLeft = "MAINWINDOW_SASHFORM_WEIGHT_LEFT" in props;
+		auto wRight = "MAINWINDOW_SASHFORM_WEIGHT_LEFT" in props;
+
+		if (wLeft && wRight)
+		{
+			try
+			{
+				int l = to!int(*wLeft);
+				int r = to!int(*wRight);
+				m_sashForm.setWeights([l, r]);
+			}
+			catch (ConvException)
+			{
+			}
+		}
+
+		auto sx = "MAINWINDOW_WIDTH" in props;
+		auto sy = "MAINWINDOW_HEIGHT" in props;
+
+		if (sx && sy)
+		{
+			try
+			{
+				int x = to!int(*sx);
+				int y = to!int(*sy);
+				m_shell.setSize(x, y);
+			}
+			catch (ConvException)
+			{
+			}			  
+		}
+
+		m_tblArticles.setProperties(props);
 	}
 
 	alias m_shell this;

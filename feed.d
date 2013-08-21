@@ -32,14 +32,12 @@ import core.time;
 
 import std.algorithm;
 import std.array;
-import std.concurrency;
 import std.container;
 import std.conv;
 import std.datetime;
 import std.exception;
 import std.file;
 import std.net.curl;
-import std.parallelism;
 import std.regex;
 import std.string;
 
@@ -48,7 +46,9 @@ import std.c.time;
 import org.eclipse.swt.graphics.Image;
 
 import date;
+import text;
 import xml.attributes;
+import xml.except;
 import xml.handler;
 
 /**
@@ -56,29 +56,33 @@ import xml.handler;
  */
 final class FeedArticle
 {
-	string  m_title;
+	string m_title;
 
-	string  m_author;
+	string m_author;
 
-	string  m_url;
+	string m_description;
+
+	string m_url;
 
 	time_t m_time;
 
 public:
-	this(string title, string author, string url, time_t time)
+	this(string title, string author, string description, string url, time_t time)
 	{
-		m_title		= title;
-		m_author	= author;
-		m_url		= url;
-		m_time      = time;
+		m_title		  = title;
+		m_author	  = author;
+		m_description = description;
+		m_url		  = url;
+		m_time        = time;
 	}
 
-	this(string title, string author, string url, time_t time) immutable
+	this(string title, string author, string description, string url, time_t time) immutable
 	{
-		m_title		= title;
-		m_author	= author;
-		m_url		= url;
-		m_time      = time;
+		m_title		  = title;
+		m_author	  = author;
+		m_description = description;
+		m_url		  = url;
+		m_time        = time;
 	}
 
 	string getTitle() const pure nothrow
@@ -96,6 +100,11 @@ public:
 		return m_url;
 	}
 
+	string getDescription() const pure nothrow
+	{
+		return m_description;
+	}
+
 	time_t getTime() const pure nothrow
 	{
 		return m_time;
@@ -103,8 +112,12 @@ public:
 
 	string toXML() const
 	{
-		return format("<article title=\"%s\" author=\"%s\" url=\"%s\" time=\"%s\"/>",
-					  xml.parser.Parser.encodeEntities(m_title), xml.parser.Parser.encodeEntities(m_author), m_url, m_time);
+		return format("<article title=\"%s\" author=\"%s\" description=\"%s\" url=\"%s\" time=\"%s\"/>",
+					  xml.parser.Parser.encodeEntities(m_title), 
+					  xml.parser.Parser.encodeEntities(m_author), 
+					  xml.parser.Parser.encodeEntities(m_description), 
+					  m_url, 
+					  m_time);
 	}
 }
 
@@ -238,8 +251,13 @@ public:
 	}
 	body
 	{
-		auto moreRecent = m_articles.filter!(a => a.getTime() >= threshold);
-		m_articles = std.array.array(moreRecent);
+		auto moreRecent = appender!(Article[])();
+		foreach (a; m_articles)
+		{
+			if (a.getTime() >= threshold)
+				moreRecent.put(a);
+		}
+		m_articles = moreRecent.data();
 	}
 
 	string toXML() const
@@ -291,9 +309,15 @@ shared(FeedInfo)[] loadFeedsFromXML(string filename)
 				string title = xml.parser.Parser.translateEntities(atts.getValue("title"));
 				string author = xml.parser.Parser.translateEntities(atts.getValue("author"));
 				string url = atts.getValue("url");
+				string description;
+				int index = atts.getIndex("description");
+				if (index != -1)
+				{
+					description = xml.parser.Parser.translateEntities(atts.getValue("description"));
+				}
 				time_t t = to!time_t(atts.getValue("time"));
 
-				result.back.appendArticle(new Article(title, author, url, t));
+				result.back.appendArticle(new Article(title, author, description, url, t));
 			}
 		}
 
@@ -629,7 +653,10 @@ public:
 			string title = entry.title;
 		
 			// Get article author
-			string author = entry.authors.data().map!(auth => auth.name).join(" & ");
+			string author = entry.authors.data().map!(auth => auth.name).join(", ");
+
+			// Get article summary
+			string description = take(xml.parser.Parser.translateEntities(entry.summary), 500);
 
 			auto foundLink = find!(l => l.rel == "alternate")(entry.links.data());
 			if (foundLink.empty)
@@ -641,7 +668,7 @@ public:
 			// Get article time
 			time_t t = SysTime.fromISOExtString(entry.updated).toUnixTime();
 
-			articles[i] = new FeedArticle(title, author, url, t);
+			articles[i] = new FeedArticle(title, author, description, url, t);
 		}
 
 		// create the Feed object
@@ -962,9 +989,21 @@ public:
 		auto articles = uninitializedArray!(FeedArticle[])(items.length);
 		foreach (i, item; items)
 		{
+			// links can contain & characters for GET parameter
+			// list (although incorrect from XML point of view)
+			string link = item.link;
+			try
+			{
+				link = xml.parser.Parser.translateEntities(link);
+			}
+			catch(SAXParseException)
+			{
+			}
+
 			articles[i] = new FeedArticle(xml.parser.Parser.translateEntities(item.title), 
-										  xml.parser.Parser.translateEntities(item.author), 
-										  xml.parser.Parser.translateEntities(item.link),
+										  xml.parser.Parser.translateEntities(item.author),
+										  take(xml.parser.Parser.translateEntities(item.description), 500),
+										  link,
 										  item.pubDate);
 		}
 		auto feedInfo = new shared FeedInfo(xml.parser.Parser.translateEntities(m_currentFeed.title),  
@@ -1292,7 +1331,8 @@ public:
 		foreach (i, item; items)
 		{
 			articles[i] = new FeedArticle(xml.parser.Parser.translateEntities(item.title), 
-										  xml.parser.Parser.translateEntities(item.creator), 
+										  xml.parser.Parser.translateEntities(item.creator),
+										  take(xml.parser.Parser.translateEntities(item.description), 500),
 										  xml.parser.Parser.translateEntities(item.link),
 										  item.updated);
 		}

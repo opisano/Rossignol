@@ -345,7 +345,7 @@ public:
 		return props;
 	}
 
-	void setProperties(Properties props)
+	void setProperties(const ref Properties props)
 	{
 		int width = to!int(props.get("ARTICLE_TABLE_COL_TITLE_WIDTH", "280"));
 		m_colTitle.setWidth(width);
@@ -354,7 +354,7 @@ public:
 		m_colAuthor.setWidth(width);
 
 		width = to!int(props.get("ARTICLE_TABLE_COL_DATE_WIDTH", "100"));
-		m_colAuthor.setWidth(width);
+		m_colDate.setWidth(width);
 	}
 
 	alias m_tblArticles this;

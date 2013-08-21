@@ -28,7 +28,7 @@ import std.string;
 alias string[string] Properties;
 
 
-void addAll(Properties props, const Properties other)
+void addAll(ref Properties props, const Properties other)
 {
 	foreach (key; other.byKey())
 	{
@@ -36,7 +36,7 @@ void addAll(Properties props, const Properties other)
 	}
 }
 
-void writeToFile(const Properties props, string filename)
+void writeToFile(const ref Properties props, string filename)
 {
 	// sort keys
 	auto keys = props.keys;
@@ -56,13 +56,13 @@ void writeToFile(const Properties props, string filename)
 
 	foreach (k; keys)
 	{
-		writefln("%s = %s", k, props[k]);
+		f.writefln("%s = %s", k, props[k]);
 	}
 	f.close();
 }
 
 
-void loadFromFile(Properties props, string filename)
+void loadFromFile(out Properties props, string filename)
 {
 	auto f = File(filename, "r");
 

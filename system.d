@@ -24,6 +24,7 @@ import std.conv;
 import std.path;
 import std.range;
 import std.traits;
+import std.utf;
 
 import std.c.locale;
 
@@ -44,7 +45,6 @@ T[] singleArray(T)(T t)
 	ts[0] = t;
 	return ts;
 }
-
 
 size_t[] indicesOf(R, T)(R haystack, T needle)
 	if (isInputRange!R)

@@ -71,9 +71,7 @@ public:
 	{
 		// create our main window
 		MainWindow win = new MainWindow(display);
-		int w, h;
-		calculateWindowSize(display, w, h);
-		win.setSize(w, h);
+		win.loadProperties();
 		win.open();
 
 		while (!win.isDisposed())

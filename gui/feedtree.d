@@ -764,7 +764,7 @@ public:
 
 		m_imgOpenGroup = new Image(m_treeFeeds.getDisplay(), "img/16x16/folder-open.png");
 		m_imgClosedGroup = new Image(m_treeFeeds.getDisplay(), "img/16x16/folder.png");
-		m_imgFeedDefault = new Image(m_treeFeeds.getDisplay(), "img/16x16/feed.png");
+		m_imgFeedDefault = mainWindow.getResourceManager().getImage("feed");
 		m_groupNodeData = new GroupNodeData(false);
 
 		addUnclassifiedGroup("Unclassified feeds");
@@ -797,14 +797,7 @@ public:
 
 	void dispose()
 	{
-		// dispose images before disposing of the tree, otherwise the GC will 
-		// throw an exception at exit
-		m_imgClosedGroup.dispose();
-		m_imgOpenGroup.dispose();
-		m_imgFeedDefault.dispose();
-
 		mapFeeds((item) => (cast(TreeNodeData)item.getData()).dispose());
-
 		m_treeFeeds.dispose();
 	}
 
@@ -1160,5 +1153,22 @@ public:
 		}
 
 		return fis;
+	}
+
+	void setFeedInfo(TreeItem item, shared(FeedInfo) info)
+	in
+	{
+		assert (item.getParent is m_treeFeeds);
+		assert (item.getItems().length == 0);
+		Object obj = item.getData();
+		if (obj !is null)
+		{
+			assert((cast(TreeNodeData)(obj)).isGroup() == false);
+		}
+	}
+	body
+	{
+		FeedNodeData data = new FeedNodeData(info);
+		item.setData(data);
 	}
 }

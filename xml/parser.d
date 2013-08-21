@@ -924,7 +924,7 @@ public:
 		else
 		{
 			// locate corresponding semicolon
-			size_t semicolonIndex = getEntityEndIndex(s[ampIndex+1..$]);
+			auto semicolonIndex = getEntityEndIndex(s[ampIndex+1..$]);
 
 			// if no semicolon found, XML is invalid
 			if (semicolonIndex == -1)
