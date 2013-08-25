@@ -25,6 +25,7 @@ import std.datetime;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -37,12 +38,21 @@ import org.eclipse.swt.widgets.Text;
 
 import gui.mainwindow;
 
+/**
+ * The type returned by the add feed dialog
+ */
 struct AddFeedResult
 {
+    /// URL of the feed.
 	string url;
+    /// Group to put the feed in. 
 	string group;
 }
 
+/**
+ * The dialog box the user has to fill in order to add a new 
+ * feed.
+ */
 final class AddFeedDialog : Dialog
 {
 	AddFeedResult m_result;
@@ -68,11 +78,13 @@ public:
 	{
 		auto parent = getParent();
 
+        // Create a modal dialog
 		m_dialog    = new Shell(parent, SWT.PRIMARY_MODAL | SWT.DIALOG_TRIM | SWT.DOUBLE_BUFFERED );
 		m_dialog.setBackgroundMode(SWT.INHERIT_FORCE);
 		m_dialog.setLayout(new GridLayout(2, false));
 		m_dialog.setText("Add new feed...");
 
+        // Feed URL
 		Label lblUrl = new Label(m_dialog, SWT.NONE);
 		lblUrl.setText("Feed location: ");
 		lblUrl.setBackground(m_dialog.getBackground());
@@ -84,6 +96,7 @@ public:
 		gridData.grabExcessHorizontalSpace = true;
 		m_txtUrl.setLayoutData(gridData);
 
+        // Group combo
 		Label lblGroups = new Label(m_dialog, SWT.NONE);
 		lblGroups.setText("Add to group: ");
 		lblGroups.setBackground(m_dialog.getBackground());
@@ -95,11 +108,14 @@ public:
 		}
 		m_cmbGroups.select(0);
 
+        // OK/Cancel buttons.
 		m_btnOk     = new Button(m_dialog, SWT.PUSH);
 		m_btnOk.setText("OK");
 		m_btnOk.setBackground(m_dialog.getBackground());
-		m_btnOk.addSelectionListener(new class SelectionAdapter
+		m_btnOk.addSelectionListener(
+            new class SelectionAdapter
 			{
+                // On click on OK button
 				override void widgetSelected(SelectionEvent e)
 				{
 					m_result.url = m_txtUrl.getText();
@@ -111,8 +127,10 @@ public:
 		m_btnCancel = new Button(m_dialog, SWT.PUSH);
 		m_btnCancel.setText("Cancel");
 		m_btnCancel.setBackground(m_dialog.getBackground());
-		m_btnCancel.addSelectionListener(new class SelectionAdapter
+		m_btnCancel.addSelectionListener(
+            new class SelectionAdapter
 			{
+                // On click on Cancel button
 				override void widgetSelected(SelectionEvent e)
 				{
 					m_result = m_result.init;
@@ -123,6 +141,7 @@ public:
 		m_dialog.pack();
 		m_dialog.open();
 
+        // Dialog message loop
 		auto display = parent.getDisplay();
 		while (!m_dialog.isDisposed())
 		{
@@ -135,21 +154,60 @@ public:
 	}
 }
 
-/*
+/**
+ * About dialog
+ */
 final class AboutDialog : Dialog
 {
 	Shell m_dialog;
+    Image m_image;
+    enum license = import("license.txt");
+
 public:
-	this(MainWindow parent, int style)
+	this(Shell parent, Image image, int style)
 	{
-		super(parent.m_shell, style);
+		super(parent, style);
+        m_image = image;
 	}
 
 	void open()
 	{
-		Label lbl;
+        auto parent = getParent();
+
+        // create dialog window
+		m_dialog    = new Shell(parent, SWT.PRIMARY_MODAL | SWT.DIALOG_TRIM | SWT.DOUBLE_BUFFERED );
+        m_dialog.setBackgroundMode(SWT.INHERIT_FORCE);
+		m_dialog.setLayout(new GridLayout(2, false));
+		m_dialog.setText("About Rossignol");
+        m_dialog.setSize(512, 384);
+
+        auto lblImage = new Label(m_dialog, 0);
+        lblImage.setImage(m_image);
+        
+        auto lblPrompt = new Label(m_dialog, 0);
+        lblPrompt.setText("Rossignol version 0.2");
+
+        auto txtLicense = new Text(m_dialog, SWT.BORDER | SWT.MULTI  | SWT.V_SCROLL | SWT.H_SCROLL);
+        auto gridData = new GridData(GridData.FILL_BOTH);
+        gridData.horizontalSpan = 2;
+        
+
+        txtLicense.setLayoutData(gridData);
+        txtLicense.setText(license);
+        txtLicense.setEditable(false);
+		m_dialog.open();
+
+        // Dialog message loop
+		auto display = parent.getDisplay();
+		while (!m_dialog.isDisposed())
+		{
+			if (!display.readAndDispatch())
+			{
+				display.sleep();
+			}
+		}
 	}
-}*/
+}
 
 
 final class RemoveOldFeedsDialog : Dialog

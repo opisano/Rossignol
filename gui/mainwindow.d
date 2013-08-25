@@ -105,6 +105,8 @@ class MainWindow : AdjustableComponent
 	MenuItem	 m_exitItem;
 	MenuItem     m_removeOldFeeds;
 	MenuItem     m_removeHistory;
+    Menu         m_helpMenu;
+    MenuItem     m_about;
 	
 	// Stores and manages the lifecycle of our GUI images.
 	ResourceManager m_resMan;
@@ -170,6 +172,16 @@ class MainWindow : AdjustableComponent
 		m_removeHistory = new MenuItem(m_editMenu, SWT.PUSH);
 		m_removeHistory.setText("Remove feeds History");
 
+        // Create help menu
+        MenuItem cascadeHelpMenu = new MenuItem(menuBar, SWT.CASCADE);
+        cascadeHelpMenu.setText("&Help");
+        m_helpMenu = new Menu(m_shell, SWT.DROP_DOWN);
+        cascadeHelpMenu.setMenu(m_helpMenu);
+
+        m_about = new MenuItem(m_helpMenu, SWT.PUSH);
+        m_about.setText("&About");
+       
+
 
 		// File menu items
 		m_newFeedItem.addSelectionListener(
@@ -226,6 +238,16 @@ class MainWindow : AdjustableComponent
 					removeHistoryAction();
 				}
 			});
+
+        // Help menu item
+        m_about.addSelectionListener(
+            new class SelectionAdapter
+            {
+                override public void widgetSelected(SelectionEvent e)
+                {
+                    aboutAction();
+                }
+            });
 	}
 
 	/**
@@ -466,6 +488,15 @@ public:
 			setProperties(props);
 		}
 	}
+
+
+    @Action 
+    void aboutAction()
+    {
+        auto img = m_resMan.getImage("appicon");
+        auto dlg = new AboutDialog(this, img, 0);
+        dlg.open();
+    }
 
 	/**
 	 * GUI action for adding a new feed item
