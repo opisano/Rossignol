@@ -49,6 +49,9 @@ class MultiAnimationThread(Widget) : Thread
 		while (atomicLoad(m_active) == true)
 		{
 			auto disp = m_targets.byValue().front.getDisplay();
+            if (disp.isDisposed())
+                return;
+
 			// update widget image in the gui thread
 			disp.asyncExec(new class Runnable
 				{
@@ -106,7 +109,7 @@ public:
 	 */
 	void remove(Widget w)
 	{
-		if (w !in m_targets || w !in m_targetImages)
+		if (w !in m_targets || w !in m_targetImages || w.isDisposed())
 			return;
 
 		// restore original target image in the gui thread

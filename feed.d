@@ -651,12 +651,33 @@ public:
 		{
 			// Get Article title
 			string title = entry.title;
+			try 
+			{
+				title = xml.parser.Parser.translateEntities(title);
+			}
+			catch (SAXParseException)
+			{
+			}
 		
 			// Get article author
 			string author = entry.authors.data().map!(auth => auth.name).join(", ");
+			try 
+			{
+				author = xml.parser.Parser.translateEntities(author);
+			}
+			catch (SAXParseException)
+			{
+			}
 
 			// Get article summary
-			string description = take(xml.parser.Parser.translateEntities(entry.summary), 500);
+			string description = entry.summary;
+			try 
+			{
+				description = xml.parser.Parser.translateEntities(description);
+			}
+			catch (SAXParseException)
+			{
+			}
 
 			auto foundLink = find!(l => l.rel == "alternate")(entry.links.data());
 			if (foundLink.empty)
@@ -668,7 +689,7 @@ public:
 			// Get article time
 			time_t t = SysTime.fromISOExtString(entry.updated).toUnixTime();
 
-			articles[i] = new FeedArticle(title, author, description, url, t);
+			articles[i] = new FeedArticle(title, author, take(description, 500), url, t);
 		}
 
 		// create the Feed object
@@ -1000,9 +1021,37 @@ public:
 			{
 			}
 
-			articles[i] = new FeedArticle(xml.parser.Parser.translateEntities(item.title), 
-										  xml.parser.Parser.translateEntities(item.author),
-										  take(xml.parser.Parser.translateEntities(item.description), 500),
+			// if description contains HTML entities, translate them into UTF8
+			auto desc = item.description;
+			try 
+			{
+				desc = xml.parser.Parser.translateEntities(desc);
+			}
+			catch (SAXParseException)
+			{
+			}
+
+			auto title = item.title;
+			try
+			{
+				title = xml.parser.Parser.translateEntities(title);
+			}
+			catch (SAXParseException)
+			{
+			}
+
+			auto auth = item.author;
+			try
+			{
+				auth = xml.parser.Parser.translateEntities(auth);
+			}
+			catch (SAXParseException)
+			{
+			}
+
+			articles[i] = new FeedArticle(title, 
+										  auth,
+										  take(desc, 500),
 										  link,
 										  item.pubDate);
 		}
@@ -1330,10 +1379,49 @@ public:
 		auto articles = uninitializedArray!(FeedArticle[])(items.length);
 		foreach (i, item; items)
 		{
-			articles[i] = new FeedArticle(xml.parser.Parser.translateEntities(item.title), 
-										  xml.parser.Parser.translateEntities(item.creator),
-										  take(xml.parser.Parser.translateEntities(item.description), 500),
-										  xml.parser.Parser.translateEntities(item.link),
+			// links can contain & characters for GET parameter
+			// list (although incorrect from XML point of view)
+			string link = item.link;
+			try
+			{
+				link = xml.parser.Parser.translateEntities(link);
+			}
+			catch(SAXParseException)
+			{
+			}
+
+			// if description contains HTML entities, translate them into UTF8
+			auto desc = item.description;
+			try 
+			{
+				desc = xml.parser.Parser.translateEntities(desc);
+			}
+			catch (SAXParseException)
+			{
+			}
+
+			auto title = item.title;
+			try
+			{
+				title = xml.parser.Parser.translateEntities(title);
+			}
+			catch (SAXParseException)
+			{
+			}
+
+			auto creator = item.creator;
+			try
+			{
+				creator = xml.parser.Parser.translateEntities(creator);
+			}
+			catch (SAXParseException)
+			{
+			}
+
+			articles[i] = new FeedArticle(title, 
+										  creator,
+										  take(desc, 500),
+										  link,
 										  item.updated);
 		}
 		auto feedInfo = new shared FeedInfo(xml.parser.Parser.translateEntities(m_currentChannel.title),  

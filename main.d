@@ -28,10 +28,15 @@ import std.array;
 import std.concurrency;
 import std.file;
 import std.path;
+import std.string;
 
 import feed;
 import gui.mainwindow;
 import system;
+
+import org.eclipse.swt.widgets.MessageBox;
+import org.eclipse.swt.SWT;
+import std.conv;
 
 
 /**
@@ -113,15 +118,33 @@ public:
 
 		return result.data();
 	}
+
+	static void setCurrentDir()
+	{
+		string path = getApplicationPath();
+		chdir(path);
+	}
 }
 
 int main(string[] argv)
 {
-	auto s = getUserLanguage();
+	Application.setCurrentDir();	
 
+	if (argv.length > 1)
+	{
+		foreach (arg; argv)
+		{
+			auto msgbox = new org.eclipse.swt.widgets.MessageBox.MessageBox(null, SWT.ICON_ERROR | SWT.OK);
+			msgbox.setText("Arguments");
+			msgbox.setMessage(to!string(arg));
+			msgbox.open();
+		}
+	}
+
+	auto s = getUserLanguage();
 	Display display = new Display();
 	new Application(display);
 	display.dispose();
-
+	
 	return 0;
 }

@@ -19,6 +19,7 @@ Copyright 2013 Olivier Pisano
 
 module text;
 
+import std.array;
 import std.exception;
 import std.string;
 import std.traits;
@@ -139,10 +140,6 @@ unittest
  * sequence (which would produce an invalid UTF-8 sequence later on).
  */
 string take(string src, size_t units)
-in
-{
-	assert (src !is null);
-}
 out (result)
 {
 	assert (result.length <= src.length);
@@ -151,6 +148,11 @@ out (result)
 }
 body
 {
+	if (src is null)
+	{
+		return null;
+	}
+
 	if (src.length < units)
 	{
 		return src;

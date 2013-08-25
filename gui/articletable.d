@@ -43,6 +43,7 @@ import org.eclipse.swt.widgets.TableItem;
 
 import feed;
 import gui.mainwindow;
+import html.html;
 import properties;
 
 
@@ -265,7 +266,7 @@ final class ArticleTable : AdjustableComponent
 				e.item = cast(TableItem) label.getData("_TABLEITEM");
 				m_tblArticles.setSelection([cast(TableItem)e.item]);
 				m_tblArticles.notifyListeners(SWT.Selection, e);
-				// fall through
+				goto case SWT.MouseExit; // fall through
 
 			case SWT.MouseExit:
 				shell.dispose();
@@ -319,12 +320,12 @@ final class ArticleTable : AdjustableComponent
 					label.setBackground(disp.getSystemColor(SWT.COLOR_INFO_BACKGROUND));
 					label.setData("_TABLEITEM", item);
 					Article art = cast(Article)item.getData();
-					label.setText(art.getDescription());
+					label.setText(art.getDescription().htmlToText().wrap(80));
 					label.addListener(SWT.MouseExit, m_labelListener);
 					label.addListener(SWT.MouseDown, m_labelListener);
 					Point size = tip.computeSize(SWT.DEFAULT, SWT.DEFAULT);
 					Rectangle rect = item.getBounds(0);
-					Point pt = m_tblArticles.toDisplay(rect.x, rect.y);
+					Point pt = m_tblArticles.toDisplay(event.x, event.y);
 					tip.setBounds(pt.x, pt.y, size.x, size.y);
 					tip.setVisible(true);
 				}

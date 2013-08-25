@@ -27,6 +27,7 @@ import std.exception;
 import std.file;
 import std.net.curl;
 import std.parallelism;
+import std.path;
 import std.stdio;
 import std.string;
 
@@ -277,9 +278,12 @@ class MainWindow : AdjustableComponent
 			});
 	}
 
+	/**
+	 * 
+	 */
 	static shared(FeedInfo) getFeedInfo(string feedURL)
 	{
-		string xmlContent = assumeUnique(get(feedURL));
+		string xmlContent = assumeUnique(cast(char[])get!(AutoProtocol, ubyte)(feedURL));
 		auto parser = new Parser();
 		auto handler = new FeedContentHandler(feedURL);
 		parser.contentHandler = handler;
@@ -315,17 +319,20 @@ class MainWindow : AdjustableComponent
 		// stop the animation once this function has been terminated.
 		scope (exit)
 		{
-			disp.asyncExec(new class Runnable
-						   {
-							   public override void run()
-							   {
-								   ath.remove(ti);
-								   if (table.getDisplayedFeed() == fi)
-								   {
-									   table.refresh();
-								   }
-							   }
-						   });
+            if (!disp.isDisposed())
+            {
+			    disp.asyncExec(new class Runnable
+						       {
+							       public override void run()
+							       {
+								       ath.remove(ti);
+                                       if (!table.isDisposed() && table.getDisplayedFeed() == fi)
+								       {
+									       table.refresh();
+								       }
+							       }
+						       });
+            }
 		}
 
 		auto fi2 = getFeedInfo(fi.getURL());

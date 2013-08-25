@@ -25,19 +25,9 @@ import std.path;
 import std.range;
 import std.traits;
 import std.utf;
-
 import std.c.locale;
 
-// used for interacting with C code...
-size_t slen(T)(const(T)* str) pure nothrow
-		if (isSomeChar!T)
-{
-	size_t count;
-	while (*str++)
-		count++;
-	return count;
-}
-
+import text;
 
 T[] singleArray(T)(T t)
 {
@@ -140,6 +130,17 @@ string getUserSettingsDirectory()
 	}
 }
 
+string getApplicationPath()
+{
+	version (Windows)
+	{
+		WCHAR[2048] szAppPath;
+		DWORD nChars = GetModuleFileNameW(null, szAppPath.ptr, 2048);
+		auto s = to!string(szAppPath[0..nChars]);
+		return dirName(s);
+	}
+}
+
 string getSettingsDirectory()
 {
 	auto path = getUserSettingsDirectory();
@@ -157,3 +158,4 @@ string getUserLanguage()
 		return null;
 	}
 }
+

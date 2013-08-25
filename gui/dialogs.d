@@ -195,6 +195,7 @@ public:
 
 		auto spnQty = new Spinner(m_dialog, SWT.BORDER);
 		spnQty.setMinimum(1);
+		spnQty.setSelection(30);
 		auto cmbUnit = new Combo(m_dialog, SWT.DROP_DOWN | SWT.READ_ONLY | SWT.BORDER);
 		cmbUnit.add("day(s)");
 		cmbUnit.add("month(s)");
