@@ -25,6 +25,7 @@ version (Windows)
 import std.conv;
 import std.string;
 import std.utf;
+import core.sys.windows.windows;
 import std.c.windows.windows;
 
 
@@ -44,6 +45,8 @@ enum PIPE_ACCEPT_REMOTE_CLIENTS = 0x00000000;
 enum PIPE_REJECT_REMOTE_CLIENTS = 0x00000008;
 
 enum FILE_FLAG_FIRST_PIPE_INSTANCE = 0x00080000;
+
+enum ERROR_ALREADY_EXISTS = 183;
 
 
 extern (Windows) 
@@ -66,6 +69,11 @@ extern (Windows)
                           OVERLAPPED* lpOverlapped);
 
     BOOL DisconnectNamedPipe(HANDLE hNamedPipe);
+
+    HANDLE CreateMutexW(
+                        LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+                        BOOL bInitialOwner,
+                        LPCWSTR lpName);
 }
 
 
@@ -281,6 +289,52 @@ public:
         {
             throwLastError();
         }
+    }
+}
+
+/**
+ * Modelizes a named mutex, useful to detect 
+ * if another instance of the application is running.
+ */
+struct NamedMutex
+{
+private:
+    HANDLE m_handle;
+    bool   m_owned;
+
+public:
+    static NamedMutex create(string name)
+    {
+        NamedMutex nm;
+        nm.m_handle = CreateMutexW(null, true, toUTF16z(name));
+
+        // Check for errors
+        if (nm.m_handle == null)
+        {
+            throwLastError();
+        }
+
+        // Check if we own the mutex
+        nm.m_owned = !(GetLastError() == ERROR_ALREADY_EXISTS);
+        return nm;
+    }
+
+    ~this()
+    {
+        if (m_handle)
+        {
+            CloseHandle(m_handle);
+            m_handle = null;
+        }
+    }
+
+    /**
+     * Tells if we own the mutex (if it is the first instance of this 
+     * application).
+     */
+    @property bool owned() const pure
+    {
+        return m_owned;
     }
 }
 

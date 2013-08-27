@@ -312,22 +312,35 @@ final class ArticleTable : AdjustableComponent
 					{
 						tip.dispose();
 					}
-					tip = new Shell(m_mainWindow.m_shell, SWT.ON_TOP | SWT.TOOL);
-					tip.setLayout(new FillLayout);
-					label = new Label(tip, SWT.NONE);
-					auto disp = m_mainWindow.m_shell.getDisplay();
-					label.setForeground(disp.getSystemColor(SWT.COLOR_INFO_FOREGROUND));
-					label.setBackground(disp.getSystemColor(SWT.COLOR_INFO_BACKGROUND));
-					label.setData("_TABLEITEM", item);
-					Article art = cast(Article)item.getData();
-					label.setText(art.getDescription().htmlToText().wrap(80));
-					label.addListener(SWT.MouseExit, m_labelListener);
-					label.addListener(SWT.MouseDown, m_labelListener);
-					Point size = tip.computeSize(SWT.DEFAULT, SWT.DEFAULT);
-					Rectangle rect = item.getBounds(0);
-					Point pt = m_tblArticles.toDisplay(event.x, event.y);
-					tip.setBounds(pt.x, pt.y, size.x, size.y);
-					tip.setVisible(true);
+                    Article art = cast(Article)item.getData();
+                    string content = art.getDescription().htmlToText().wrap(80);
+                    try
+                    {
+                        content = xml.parser.Parser.translateEntities(content);
+                    }
+                    catch (Exception)
+                    {
+                    }
+
+                    if (!content.empty)
+                    {
+					    tip = new Shell(m_mainWindow.m_shell, SWT.ON_TOP | SWT.TOOL);
+					    tip.setLayout(new FillLayout);
+					    label = new Label(tip, SWT.NONE);
+					    auto disp = m_mainWindow.m_shell.getDisplay();
+					    label.setForeground(disp.getSystemColor(SWT.COLOR_INFO_FOREGROUND));
+					    label.setBackground(disp.getSystemColor(SWT.COLOR_INFO_BACKGROUND));
+					    label.setData("_TABLEITEM", item);
+					    
+					    label.setText(content);
+					    label.addListener(SWT.MouseExit, m_labelListener);
+					    label.addListener(SWT.MouseDown, m_labelListener);
+					    Point size = tip.computeSize(SWT.DEFAULT, SWT.DEFAULT);
+					    Rectangle rect = item.getBounds(0);
+					    Point pt = m_tblArticles.toDisplay(event.x, event.y);
+					    tip.setBounds(pt.x, pt.y, size.x, size.y);
+					    tip.setVisible(true);
+                    }
 				}
 			}
 		}

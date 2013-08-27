@@ -74,7 +74,7 @@ public:
 		this(parent, 0);
 	}
 	
-	AddFeedResult open(R)(R groupNames)
+	AddFeedResult open(R)(R groupNames, string url="")
 	{
 		auto parent = getParent();
 
@@ -95,6 +95,7 @@ public:
 		gridData.horizontalAlignment = SWT.FILL;
 		gridData.grabExcessHorizontalSpace = true;
 		m_txtUrl.setLayoutData(gridData);
+        m_txtUrl.setText(url);
 
         // Group combo
 		Label lblGroups = new Label(m_dialog, SWT.NONE);

@@ -446,6 +446,9 @@ class MainWindow : AdjustableComponent
 
 	}
 
+    /**
+     * Save the GUI properties to a file.
+     */
 	void saveProperties()
 	{
 		Properties props = getProperties();
@@ -459,12 +462,25 @@ class MainWindow : AdjustableComponent
 		props.writeToFile(filename);
 	}
 
+    /**
+     * Handle the command line arguments that are related to the GUI.
+     */
+    void handleArgs(string args[])
+    {
+        foreach (arg; args)
+        {
+            if (arg.startsWith("feed://"))
+            {
+                newFeedItemAction(arg[7..$]);
+            }
+        }
+    }
+
 public:
-	this(Display display)
+	this(Display display, string[] args)
 	{
 		m_shell = new Shell(display);
 		m_shell.setText("Rossignol");
-
 		loadImages();
 		createMenus();
 		createContent();
@@ -477,6 +493,9 @@ public:
 		m_resMan.dispose();
 	}
 
+    /**
+     * Load the GUI properties from a file
+     */
 	void loadProperties()
 	{
 		auto settingsFile = buildPath(getSettingsDirectory(), "settings",
@@ -502,13 +521,13 @@ public:
 	 * GUI action for adding a new feed item
 	 */
 	@Action
-	void newFeedItemAction()
+	void newFeedItemAction(string url="")
 	{
 		try
 		{
 			AddFeedDialog dlg = new AddFeedDialog(m_shell);
 			auto groupNames = m_treeFeeds.getGroupNames();
-			auto result = dlg.open(groupNames);
+			auto result = dlg.open(groupNames, url);
 			if (result != AddFeedResult.init)
 			{
 				addFeed(result.url, result.group);

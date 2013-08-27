@@ -19,65 +19,108 @@ Copyright 2013 Olivier Pisano
 
 module main;
 
+import core.thread;
+
+import std.array;
+import std.conv;
+import std.file;
+import std.path;
+import std.stdio;
+import std.string;
+
+import java.lang.Runnable;
+
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 
-import std.array;
-import std.concurrency;
-import std.file;
-import std.path;
-import std.string;
-
 import feed;
 import gui.mainwindow;
 import system;
 
-import org.eclipse.swt.widgets.MessageBox;
-import org.eclipse.swt.SWT;
-import std.conv;
 
+version (Windows)
+{
+    import windows;
+    enum SERVER_ADDRESS = r"\\.\pipe\RossignolPipe";
+}
 
 /**
-* Calculates what dimensions to give to a window, depending on a screen 
-* size.
-*/
-void calculateWindowSize(Display display, out int w, out int h)
+ * Creates a server thread from which this process listens to 
+ * messages coming from other Rossignol processes.
+ */
+class IPCServerThread : Thread
 {
-	h = cast(int)(display.getClientArea().height * 0.8);
-	w = cast(int)(h * 1.33);
+    MainWindow m_mainWindow;
+    Display    m_display;
+
+    void run()
+    {
+        // Create a server pipe
+        auto pipe = NamedPipe.createServerPipe(SERVER_ADDRESS);
+
+        while (1)
+        {
+            // wait for data from other process
+            string s = pipe.read();
+            string[] lines = s.splitLines();
+            foreach (line; lines)
+            {
+                if (line.startsWith("feed://"))
+                {
+                    m_display.asyncExec(
+                        new class Runnable
+                        {
+                            override void run()
+                            {
+                                try
+                                {
+                                    if (!m_mainWindow.isDisposed())
+                                    {
+                                        m_mainWindow.newFeedItemAction(line[7..$]);
+                                    }
+                                }
+                                catch (Exception) 
+                                {
+                                }
+                            }
+                        });
+                }
+            }
+        }
+    }
+
+public:
+    this(MainWindow mainWindow, Display display)
+    {
+        super(&run);
+        m_mainWindow = mainWindow;
+        m_display    = display;
+    }
 }
+
 
 /**
  * Modelizes our application
  */
 class Application
 {
-	Tid[] m_threadIds;
-
-	/**
-	 * Centers a window on the screen
-	 */
-	void center(MainWindow shell)
-	{
-		Rectangle bds = shell.getDisplay().getBounds();
-
-        Point p = shell.getSize();
-
-        int nLeft = (bds.width - p.x) / 2;
-        int nTop = (bds.height - p.y) / 2;
-
-        shell.setBounds(nLeft, nTop, p.x, p.y);
-	}
 
 public: 
-	this(Display display)
+	this(Display display, string[] args)
 	{
 		// create our main window
-		MainWindow win = new MainWindow(display);
+		MainWindow win = new MainWindow(display, args);
 		win.loadProperties();
 		win.open();
+        win.handleArgs(args);
+
+        // create IPC server
+        auto thread = new IPCServerThread(win, display);
+        thread.name = "IPC Server";
+        thread.isDaemon = true;
+        thread.start();
 
 		while (!win.isDisposed())
 		{
@@ -85,38 +128,6 @@ public:
 				display.sleep();
 		}
 		win.dispose();
-	}
-
-	/**
-	 * This function parses the files on disk that contain serialized 
-	 * FeedInfo object and deserializes them.
-	 */
-	static FeedInfo[] getFeedsFromDisk()
-	out (result)
-	{
-		assert (result !is null);
-	}
-	body
-	{
-		// find/create settings directory
-		auto result = appender!(FeedInfo[])();
-		string settingsPath = getSettingsDirectory();
-		if (!exists(settingsPath))
-			mkdir(settingsPath);
-
-		// find/create feeds directory
-		string feedsPath = buildPath(settingsPath, "feeds");
-		if (!exists(feedsPath))
-			mkdir(feedsPath);
-
-		
-		foreach (filename; dirEntries(feedsPath, SpanMode.breadth))
-		{
-			auto content = readText(filename);
-			//loadFromJSON(content, result);// TODO
-		}
-
-		return result.data();
 	}
 
 	static void setCurrentDir()
@@ -128,23 +139,30 @@ public:
 
 int main(string[] argv)
 {
-	Application.setCurrentDir();	
-
-	if (argv.length > 1)
-	{
-		foreach (arg; argv)
-		{
-			auto msgbox = new org.eclipse.swt.widgets.MessageBox.MessageBox(null, SWT.ICON_ERROR | SWT.OK);
-			msgbox.setText("Arguments");
-			msgbox.setMessage(to!string(arg));
-			msgbox.open();
-		}
-	}
-
-	auto s = getUserLanguage();
-	Display display = new Display();
-	new Application(display);
-	display.dispose();
+    // Named mutex used to detect if another instance of this application 
+    // is already running.
+    NamedMutex mutex = NamedMutex.create("Global\\RossignolMutex");
+    if (mutex.owned) // No other instance is running
+    {
+	    Application.setCurrentDir();	
+	    Display display = new Display();
+	    new Application(display, argv);
+	    display.dispose();
+    }
+    else
+    {
+        // If we have arguments to send to the other process
+        if (argv.length > 1)
+        {
+            // Connect to the other process and send args
+            auto pipe = NamedPipe.createClientPipe(SERVER_ADDRESS);
+            auto args = argv[1..$].join("\n");
+            if (args.length < 2_048)
+            {
+                pipe.write(args);
+            }
+        }
+    }
 	
 	return 0;
 }

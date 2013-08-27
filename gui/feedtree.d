@@ -607,25 +607,6 @@ class FeedTree
 		}
 		else
 		{
-			// Add rename menu
-			MenuItem mnuRename = new MenuItem(m_popupMenu, 0);
-			mnuRename.setText("Rename");
-			mnuRename.addSelectionListener(new class SelectionAdapter
-				{
-					override public void widgetSelected(SelectionEvent e)
-					{
-						// get the selected tree item
-						int selectedCount = m_treeFeeds.getSelectionCount();
-						if (selectedCount < 1)
-						{
-							return;
-						}
-						TreeItem selectedItem = m_treeFeeds.getSelection()[0];
-
-						renameNode(selectedItem);
-					}
-				});
-
 			// Add remove menu
 			MenuItem mnuRemove = new MenuItem(m_popupMenu, 0);
 			mnuRemove.setText("Remove");
@@ -646,6 +627,27 @@ class FeedTree
 				});
 			if (data.isGroup())
 			{
+                // Add rename menu
+                MenuItem mnuRename = new MenuItem(m_popupMenu, 0);
+                mnuRename.setText("Rename");
+                mnuRename.addSelectionListener(
+                    new class SelectionAdapter
+                    {
+                        override public void widgetSelected(SelectionEvent e)
+                        {
+                            // get the selected tree item
+                            int selectedCount = m_treeFeeds.getSelectionCount();
+                            if (selectedCount < 1)
+                            {
+                                return;
+                            }
+                            TreeItem selectedItem = m_treeFeeds.getSelection()[0];
+
+                            renameNode(selectedItem);
+                        }
+                    });
+
+
 				auto groupData = cast(GroupNodeData)data;
 				// Disable remove for the default group
 				if (groupData.isDefaultGroup())
