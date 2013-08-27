@@ -98,7 +98,7 @@ public:
 	}
 }
 
-string getErrorMessage(DWORD errCode)
+private string getErrorMessage(DWORD errCode)
 {
     // Get error message corresponding to error code 
 	LPWSTR szErr;
@@ -139,7 +139,7 @@ void throwLastError()
     throw new WindowsException(str, errCode);
 }
 
-enum PipeMode
+private enum IPCMode
 {
     client,
     server
@@ -148,27 +148,27 @@ enum PipeMode
 /**
  * A Windows named pipe
  */
-struct NamedPipe
+struct IPC
 {
 private:
 	HANDLE		m_handle;
 
     debug
     {
-        PipeMode mode;
+        IPCMode mode;
     }
 
 public:
 
     /**
-     * Create a server named pipe for reading.
+     * Create a server IPC for reading.
      *
      * params
-     * - name the pipe name
+     * - name the IPC name
      */
-	static NamedPipe createServerPipe(string name)
+	static IPC createServer(string name)
 	{
-		NamedPipe np;
+		IPC np;
 
         // Create named pipe
 		np.m_handle = CreateNamedPipeW(toUTF16z(name),
@@ -187,21 +187,21 @@ public:
 
         debug
         {
-            np.mode = PipeMode.server;
+            np.mode = IPCMode.server;
         }
 
 		return np;
 	}
 
     /**
-     * Create a client pipe for writing.
+     * Create a client IPC for writing.
      * 
      * params
-     * - name the pipe name
+     * - name the ipc name
      */
-    static NamedPipe createClientPipe(string name)
+    static IPC createClient(string name)
     {
-        NamedPipe np;
+        IPC np;
 
         // Open named pipe
         np.m_handle = CreateFileW(toUTF16z(name),
@@ -219,7 +219,7 @@ public:
 
         debug
         {
-            np.mode = PipeMode.client;
+            np.mode = IPCMode.client;
         }
 
         return np;
@@ -241,7 +241,7 @@ public:
 	{
         debug
         {
-            assert (mode == PipeMode.server);
+            assert (mode == IPCMode.server);
         }
 
 		char[2048] buffer;
@@ -276,7 +276,7 @@ public:
     {
         debug
         {
-            assert (mode == PipeMode.client);
+            assert (mode == IPCMode.client);
         }
 
         DWORD bytesWritten;
@@ -293,19 +293,20 @@ public:
 }
 
 /**
- * Modelizes a named mutex, useful to detect 
+ * Modelizes a token, useful to detect 
  * if another instance of the application is running.
  */
-struct NamedMutex
+struct Token
 {
 private:
     HANDLE m_handle;
     bool   m_owned;
 
 public:
-    static NamedMutex create(string name)
+    static Token create(string name)
     {
-        NamedMutex nm;
+        Token nm;
+        // create a named mutex
         nm.m_handle = CreateMutexW(null, true, toUTF16z(name));
 
         // Check for errors
@@ -329,10 +330,10 @@ public:
     }
 
     /**
-     * Tells if we own the mutex (if it is the first instance of this 
+     * Tells if we own the token (if it is the first instance of this 
      * application).
      */
-    @property bool owned() const pure
+    @property bool owned() const
     {
         return m_owned;
     }

@@ -43,6 +43,7 @@ import system;
 version (Windows)
 {
     import windows;
+    enum TOKEN_NAME = "Global\\RossignolMutex";
     enum SERVER_ADDRESS = r"\\.\pipe\RossignolPipe";
 }
 
@@ -58,12 +59,12 @@ class IPCServerThread : Thread
     void run()
     {
         // Create a server pipe
-        auto pipe = NamedPipe.createServerPipe(SERVER_ADDRESS);
+        auto ipc = IPC.createServer(SERVER_ADDRESS);
 
         while (1)
         {
             // wait for data from other process
-            string s = pipe.read();
+            string s = ipc.read();
             string[] lines = s.splitLines();
             foreach (line; lines)
             {
@@ -141,7 +142,7 @@ int main(string[] argv)
 {
     // Named mutex used to detect if another instance of this application 
     // is already running.
-    NamedMutex mutex = NamedMutex.create("Global\\RossignolMutex");
+    Token mutex = Token.create(TOKEN_NAME);
     if (mutex.owned) // No other instance is running
     {
 	    Application.setCurrentDir();	
@@ -155,7 +156,7 @@ int main(string[] argv)
         if (argv.length > 1)
         {
             // Connect to the other process and send args
-            auto pipe = NamedPipe.createClientPipe(SERVER_ADDRESS);
+            auto pipe = IPC.createClient(SERVER_ADDRESS);
             auto args = argv[1..$].join("\n");
             if (args.length < 2_048)
             {
