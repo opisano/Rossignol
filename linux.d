@@ -25,12 +25,14 @@ version (linux)
 import core.stdc.errno;
 import core.stdc.string;
 import core.sys.posix.fcntl;
+import core.sys.posix.pwd;
 import core.sys.posix.unistd;
 import core.sys.posix.sys.socket;
 import core.sys.posix.sys.types;
 import core.sys.posix.sys.un;
 
 import std.conv;
+import std.path;
 import std.string;
 
 /**
@@ -59,7 +61,7 @@ private string getErrorMessage(int errCode)
     return to!string(msg);
 }
 
-void throwLastError()
+private void throwLastError()
 {
     auto errCode = errno;
     auto str = getErrorMessage(errCode);
@@ -296,6 +298,40 @@ public:
     {
         return m_owned;
     }
+}
+
+/**
+ * Returns a string identifying where user settings should be put.
+ */
+string getUserSettingsDirectory()
+{
+    // According to freedesktop.org, user settings should be put in ~/.config
+    
+    auto pw = getpwuid(getuid());
+    if (pw is null)
+    {
+        throwLastError();
+    }
+    
+    string userdir = to!string(*pw.pw_dir);
+    return buildPath(userdir, ".config");
+}
+
+/**
+ * Return the absolute path to this process executable.
+ */
+string getApplicationPath()
+{
+    char[2048] buffer = void;
+    auto count = readlink(toStringz("/proc/self/exe"), buffer.ptr, 
+        buffer.length);
+    
+    if (count < 0)
+    {
+        throwLastError();
+    }
+    
+    return buffer[0..count].idup;
 }
     
 }

@@ -52,6 +52,11 @@ size_t[] indicesOf(R, T)(R haystack, T needle)
 	return indices.data();
 }
 
+version (linux)
+{
+    import linux;
+}
+
 
 version(Windows)
 {
@@ -93,9 +98,9 @@ version(Windows)
 
 string getUserSettingsDirectory()
 {
-	version (Posix)
+	version (linux)
 	{
-		static assert(0); // TODO implement
+		return linux.getUserSettingsDirectory();
 	}
 	version (Windows)
 	{
@@ -132,6 +137,10 @@ string getUserSettingsDirectory()
 
 string getApplicationPath()
 {
+    version (linux)
+    {
+        return linux.getApplicationPath();
+    }
 	version (Windows)
 	{
 		WCHAR[2048] szAppPath;
