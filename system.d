@@ -57,43 +57,9 @@ version (linux)
     import linux;
 }
 
-
 version(Windows)
 {
-	import core.sys.windows.windows;
-
-	enum
-	{
-		CSIDL_DESKTOP                   = 0x0000,        
-		CSIDL_INTERNET                  = 0x0001,        
-		CSIDL_PROGRAMS                  = 0x0002,        
-		CSIDL_CONTROLS                  = 0x0003,        
-		CSIDL_PRINTERS                  = 0x0004,        
-		CSIDL_PERSONAL                  = 0x0005,        
-		CSIDL_FAVORITES                 = 0x0006,        
-		CSIDL_STARTUP                   = 0x0007,        
-		CSIDL_RECENT                    = 0x0008,        
-		CSIDL_SENDTO                    = 0x0009,        
-		CSIDL_BITBUCKET                 = 0x000a,        
-		CSIDL_STARTMENU                 = 0x000b,        
-		CSIDL_MYDOCUMENTS               = CSIDL_PERSONAL,
-		CSIDL_MYMUSIC                   = 0x000d,        
-		CSIDL_MYVIDEO                   = 0x000e,        
-		CSIDL_DESKTOPDIRECTORY          = 0x0010,        
-		CSIDL_DRIVES                    = 0x0011,        
-		CSIDL_NETWORK                   = 0x0012,        
-		CSIDL_NETHOOD                   = 0x0013,        
-		CSIDL_FONTS                     = 0x0014,        
-		CSIDL_TEMPLATES                 = 0x0015,        
-		CSIDL_COMMON_STARTMENU          = 0x0016,        
-		CSIDL_COMMON_PROGRAMS           = 0X0017,        
-		CSIDL_COMMON_STARTUP            = 0x0018,        
-		CSIDL_COMMON_DESKTOPDIRECTORY   = 0x0019,        
-		CSIDL_APPDATA                   = 0x001a,        
-		CSIDL_PRINTHOOD                 = 0x001b,
-
-		CSIDL_FLAG_CREATE               = 0x8000
-	}
+	import windows;
 }
 
 string getUserSettingsDirectory()
@@ -104,34 +70,7 @@ string getUserSettingsDirectory()
 	}
 	version (Windows)
 	{
-		/* DMD 2.063 is lacking some function declaration in its shell32.lib, 
-		   so we must dynamically retrieve a pointer to the SHGetFolderPathW
-		   function.
-		*/
-		alias extern(Windows) HRESULT function(HWND, int, HANDLE, DWORD, LPWSTR) func;
-
-		// load shell32.dll
-		func SHGetFolderPathW; 
-		auto hModule = LoadLibraryW("Shell32.dll"w.ptr);
-
-		if (hModule is null)
-			throw new Exception("Cannot load shell32.dll");
-
-		// don't forget to free hModule at scope exit
-		scope (exit)
-			FreeLibrary(hModule);
-
-		// Get function address
-		SHGetFolderPathW = cast(func) GetProcAddress(hModule, "SHGetFolderPathW");
-		if (SHGetFolderPathW is null)
-			throw new Exception("Cannot find SHGetFolderPathW address");
-
-		// Retrieve application data folder
-		wchar[MAX_PATH] szPath;
-		SHGetFolderPathW(null, CSIDL_APPDATA|CSIDL_FLAG_CREATE, null, 0,
-						szPath.ptr);
-		size_t len = slen(szPath.ptr);
-		return to!string(szPath[0..len]);
+		return windows.getUserSettingsDirectory();
 	}
 }
 
@@ -143,10 +82,7 @@ string getApplicationPath()
     }
 	version (Windows)
 	{
-		WCHAR[2048] szAppPath;
-		DWORD nChars = GetModuleFileNameW(null, szAppPath.ptr, 2048);
-		auto s = to!string(szAppPath[0..nChars]);
-		return dirName(s);
+		return windows.getApplicationPath();
 	}
 }
 
