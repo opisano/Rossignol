@@ -413,7 +413,7 @@ public:
 		if (feedInfo !is m_feedInfo)
 		{
 			m_feedInfo = feedInfo;
-			auto count = m_feedInfo.getArticles().length;
+			int count = cast(int)m_feedInfo.getArticles().length;
 			m_articles = new Rebindable!Article[count];
 			foreach (index, article; m_feedInfo.getArticles())
 			{
@@ -432,7 +432,7 @@ public:
 	 */
 	void refresh()
 	{
-		auto count = m_feedInfo.getArticles().length;
+		int count = cast(int)m_feedInfo.getArticles().length;
 		m_articles = new Rebindable!Article[count];
 		foreach (index, article; m_feedInfo.getArticles())
 		{

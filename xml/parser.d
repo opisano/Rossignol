@@ -929,7 +929,7 @@ public:
 			// if no semicolon found, XML is invalid
 			if (semicolonIndex == -1)
 			{
-				throw new SAXParseException("Incorrect entity encoding", null, null, 1, semicolonIndex);
+				throw new SAXParseException("Incorrect entity encoding", null, null, 1, cast(int)semicolonIndex);
 			}
 			else
 			{
@@ -990,7 +990,7 @@ public:
 						// if no semicolon found, XML is invalid
 						if (semicolonIndex == -1)
 						{
-							throw new SAXParseException("Incorrect entity encoding", null, null, 1, semicolonIndex);
+							throw new SAXParseException("Incorrect entity encoding", null, null, 1, cast(int)semicolonIndex);
 						}
 						semicolonIndex += (ampIndex + 1);
 					}

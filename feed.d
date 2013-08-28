@@ -50,6 +50,7 @@ import text;
 import xml.attributes;
 import xml.except;
 import xml.handler;
+import xml.parser;
 
 /**
  * Modelizes an article in a Feed
@@ -310,7 +311,7 @@ shared(FeedInfo)[] loadFeedsFromXML(string filename)
 				string author = xml.parser.Parser.translateEntities(atts.getValue("author"));
 				string url = atts.getValue("url");
 				string description;
-				int index = atts.getIndex("description");
+				auto index = atts.getIndex("description");
 				if (index != -1)
 				{
 					description = xml.parser.Parser.translateEntities(atts.getValue("description"));

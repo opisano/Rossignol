@@ -42,9 +42,14 @@ import system;
 
 version (Windows)
 {
-    import windows;
     enum TOKEN_NAME = "Global\\RossignolMutex";
     enum SERVER_ADDRESS = r"\\.\pipe\RossignolPipe";
+}
+version (linux)
+{
+    import linux;
+    enum SERVER_ADDRESS = "/tmp/socket-rossignol";
+    string TOKEN_NAME;
 }
 
 /**
@@ -133,13 +138,18 @@ public:
 
 	static void setCurrentDir()
 	{
-		string path = getApplicationPath();
+		string path = system.getApplicationPath();
 		chdir(path);
 	}
 }
 
 int main(string[] argv)
 {
+    version (linux)
+    {
+        TOKEN_NAME = getTokenName();
+    }
+    
     // Named mutex used to detect if another instance of this application 
     // is already running.
     Token mutex = Token.create(TOKEN_NAME);

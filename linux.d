@@ -178,7 +178,7 @@ public:
         
         debug
         {
-            icp.mode = IPCMode.client;
+            ipc.mode = IPCMode.client;
         }
         
         return ipc;
@@ -200,7 +200,7 @@ public:
     {
         debug
         {
-            assert (mode == IPC.server);
+            assert (mode == IPCMode.server);
         }
         
         // wait for client connection
@@ -298,6 +298,17 @@ public:
     {
         return m_owned;
     }
+}
+
+string getTokenName()
+{
+    auto pw = getpwuid(getuid());
+    if (pw is null)
+    {
+        throwLastError();
+    }
+    
+    return buildPath(to!string(*pw.pw_dir), ".RossignolMutex");
 }
 
 /**

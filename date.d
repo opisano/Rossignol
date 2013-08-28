@@ -85,7 +85,7 @@ SysTime convertDate(string rfc822Date)
 		}
 
 		// parse month
-		int month = countUntil(months, m.captures["month"].toLower()) + 1;
+		int month = cast(int)(countUntil(months, m.captures["month"].toLower()) + 1);
 
 		// parse day
 		int day = to!int(m.captures["day"]);

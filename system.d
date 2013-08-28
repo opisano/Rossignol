@@ -96,6 +96,7 @@ string getUserLanguage()
 {
 	version (Posix)
 	{
+	    return null;
 	}
 	version (Windows)
 	{

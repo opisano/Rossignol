@@ -45,7 +45,7 @@ class MultiAnimationThread(Widget) : Thread
 	void run()
 	{
 		// image index 
-		shared int index;
+		shared size_t index;
 		while (atomicLoad(m_active) == true)
 		{
 			auto disp = m_targets.byValue().front.getDisplay();
@@ -69,7 +69,7 @@ class MultiAnimationThread(Widget) : Thread
 
 
 				// increase image index 
-				int nextIndex = atomicLoad(index);
+				auto nextIndex = atomicLoad(index);
 				nextIndex = ++nextIndex % m_images.length;
 				if (nextIndex == 0)
 					nextIndex++;
