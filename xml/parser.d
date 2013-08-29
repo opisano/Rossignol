@@ -27,6 +27,7 @@ import std.string;
 import std.utf;
 
 import xml.attributes;
+import xml.encoding;
 import xml.entities;
 import xml.except;
 import xml.handler;
@@ -166,10 +167,11 @@ public:
 	abstract size_t parse(string text);
 }
 
+
 /**
  * Modelizes the state a Parser is in when it starts.
  */
-class StartState : ParserState
+class NormalState : ParserState
 {
 	CommentState			m_commentState;
 	DTDState				m_DTDState;
@@ -390,22 +392,16 @@ public:
 			if (ch == '-') // look for -->
 			{
 				const remainingBytes = text.length - i;
-				if (remainingBytes)
+				if (remainingBytes > 1 && text[i+1] == '-')
 				{
-					if (text[i+1] == '-')
+					if (text[i+2] == '>')
 					{
-						if (remainingBytes > 1)
-						{
-							if (text[i+2] == '>')
-							{
-								return i +3 + 4; // + 4 because we skipped 4 bytes in advance
-							}
-							else
-							{
-								throw new SAXParseException("'--' forbiden in comments", 
-															 null, null, m_owner.m_line, m_owner.m_col);
-							}
-						}
+						return i +3 + 4; // + 4 because we skipped 4 bytes in advance
+					}
+					else
+					{
+						throw new SAXParseException("'--' forbiden in comments", 
+														null, null, m_owner.m_line, m_owner.m_col);
 					}
 				}
 			}
@@ -467,7 +463,7 @@ public:
 						{
 							targetEndIndex = i;
 							string target = text[0..targetEndIndex];
-							if (target.icmp("xml") != 0)
+							if (target.cmp("xml") != 0)
 							{
 								if (m_owner.m_contentHandler)
 								{
@@ -494,7 +490,7 @@ public:
 						if (text[i+1] == '>')
 						{
 							string target = text[0..targetEndIndex];
-							if (target.icmp("xml") != 0)
+							if (target.cmp("xml") != 0)
 							{
 								string data = null;
 								if (dataStartIndex != -1)
@@ -572,80 +568,71 @@ public:
 	}
 }
 
+private Attribute decodeAttribute(string text, size_t startIndex, size_t equalIndex,
+                                  size_t openIndex, size_t closeIndex, size_t line, size_t col)
+in
+{
+    assert(text[startIndex].isNameCharStart());
+    assert(startIndex != -1);
+    assert(equalIndex != -1);
+    assert(openIndex != -1);
+    assert(closeIndex != -1);
+    assert(startIndex < equalIndex);
+    assert(equalIndex < openIndex);
+    assert(openIndex < closeIndex);
+}
+body
+{
+    if (startIndex == -1)
+    {
+        throw new SAXParseException("Unnamed attribute encountered", null, null,
+                                    line, col);
+    }
+
+    if (equalIndex == -1)
+    {
+        throw new SAXParseException("Expected equal sign for attribute definition", null, null,
+                                    line, col);
+    }
+
+    size_t index = equalIndex-1;
+    while (text[index].isWhitespace())
+    {
+        index--;
+    }
+
+    Attribute attr;
+    string qName = text[startIndex..index+1];
+
+    // split qName into uri and localName, if possible
+    auto r = findSplit(qName, ":");
+    if (!r[1].empty)
+    {
+        attr.namespace = r[0];
+        attr.localName = r[2];
+    }
+    else 
+    {
+        attr.localName = qName;
+    }
+
+    // split value
+    if (openIndex == -1 || closeIndex == -1)
+    {
+        throw new SAXParseException("Missing attribute value", null, null,
+                                    line, col);
+    }
+
+    attr.value = text[openIndex+1..closeIndex];
+    return attr;
+}
+
 /**
  * Handles the state a parser is when it encounters an opening state.
  */
 final class OpeningTagState : ParserState
 {
 	Appender!(Attribute[]) m_attr_array;
-
-	/**
-	 * Adds an attribute to this Attribute array.
-	 * Parameters
-	 *   - text: xml string being parsed.
-	 *   - startIndex: index of the start of attribute in the string.
-	 *   - equalIndex: index of the equal sign in the string.
-	 *   - openIndex: index of the opening double quote in the string.
-	 *   - closeIndex: index of the closing double quote in the string.
-	 */
-	void appendAttribute(string text, size_t startIndex, size_t equalIndex,
-						 size_t openIndex, size_t closeIndex)
-	in
-	{
-		assert(text[startIndex].isNameCharStart());
-		assert(startIndex != -1);
-		assert(equalIndex != -1);
-		assert(openIndex != -1);
-		assert(closeIndex != -1);
-		assert(startIndex < equalIndex);
-		assert(equalIndex < openIndex);
-		assert(openIndex < closeIndex);
-	}
-	body
-	{
-		if (startIndex == -1)
-		{
-			throw new SAXParseException("Unnamed attribute encountered", null, null,
-										m_owner.m_line, m_owner.m_col);
-		}
-
-		if (equalIndex == -1)
-		{
-			throw new SAXParseException("Expected equal sign for attribute definition", null, null,
-										m_owner.m_line, m_owner.m_col);
-		}
-
-		size_t index = equalIndex-1;
-		while (text[index].isWhitespace())
-		{
-			index--;
-		}
-
-		Attribute attr;
-		string qName = text[startIndex..index+1];
-
-		// split qName into uri and localName, if possible
-		auto r = findSplit(qName, ":");
-		if (!r[1].empty)
-		{
-			attr.namespace = r[0];
-			attr.localName = r[2];
-		}
-		else 
-		{
-			attr.localName = qName;
-		}
-
-		// split value
-		if (openIndex == -1 || closeIndex == -1)
-		{
-			throw new SAXParseException("Missing attribute value", null, null,
-										m_owner.m_line, m_owner.m_col);
-		}
-
-		attr.value = text[openIndex+1..closeIndex];
-		m_attr_array.put(attr);
-	}
 
 public:
 	this(Parser owner)
@@ -733,7 +720,8 @@ public:
 					else
 					{
 						endQuoteIndex = i;
-						appendAttribute(text, startAttrIndex, eqIndex, startQuoteIndex, endQuoteIndex);
+                        m_attr_array.put(decodeAttribute(text, startAttrIndex, eqIndex, startQuoteIndex, 
+                                                         endQuoteIndex,m_owner.m_line, m_owner.m_col));
 						startAttrIndex	= -1;
 						eqIndex			= -1;
 						startQuoteIndex = -1;
@@ -852,6 +840,93 @@ final class Parser
 	ContentHandler m_contentHandler;
 	ErrorHandler   m_errorHandler;
 
+    /**
+     * Processing the opening <?xml...?> directive.
+     * 
+     * This function decodes the directive and all its attributes.
+     * if an encoding argument is found, text may be converted 
+     * from source encoding to UTF-8. The result of the conversion
+     * is the text return by the function
+     */
+    string processXMLDeclaration(string text)
+    {
+        ptrdiff_t argStartIndex = -1;
+        ptrdiff_t equalIndex = -1;
+        ptrdiff_t openingQuoteIndex = -1;
+        ptrdiff_t closingQuoteIndex = -1;
+
+        string encoding = "UTF-8";
+
+        auto t = text[6..$]; // skip '<?xml ' (6 bytes)
+
+        foreach (size_t i, dchar ch; t)
+        {
+            // Test for the end of declaration
+            if (ch == '?')
+            {
+                size_t bytesRemaining = t.length - i;
+                if (bytesRemaining && t[i+1] == '>')
+                {
+                    if (encoding == "UTF-8")
+                    {
+                        return text[i+6..$]; // since we skipped 6 bytes
+                    }
+                    else
+                    {
+                        auto handler = EncodingFactory.getEncodingHandler(encoding);
+                        if (handler !is null)
+                        {
+                            return handler.decode(cast(ubyte[])text[i+6..$]);
+                        }
+                        return text[i+6..$];
+                    }
+                }
+            }
+            else
+            {
+                if (argStartIndex == -1 && ch.isNameCharStart())
+                {
+                    argStartIndex = i;
+                }
+                else if (equalIndex == -1 && (ch == '='))
+                {
+                    equalIndex = i;
+                }
+                else if (openingQuoteIndex == -1 && (ch == '"'))
+                {
+                    openingQuoteIndex = i;
+                }
+                else if (openingQuoteIndex != -1 && closingQuoteIndex == -1 && (ch == '"'))
+                {
+                    closingQuoteIndex = i;
+
+                    // if we have found the limits of current argument
+                    if (argStartIndex != -1 && equalIndex != -1 
+                            && openingQuoteIndex != -1 && closingQuoteIndex != -1
+                            && argStartIndex < equalIndex 
+                            && equalIndex < openingQuoteIndex 
+                            && openingQuoteIndex < closingQuoteIndex)
+                    {
+                        auto attr = decodeAttribute(t, argStartIndex, equalIndex,
+                                                    openingQuoteIndex, closingQuoteIndex, 0, 0);
+
+                        argStartIndex       = -1;
+                        equalIndex          = -1;
+                        openingQuoteIndex   = -1;
+                        closingQuoteIndex   = -1;
+
+                        if (attr.name() == "encoding")
+                        {
+                            encoding = attr.value.toUpper();
+                        }
+                    }
+                }
+            }
+        }
+
+        throw new SAXParseException("Unterminated <?xml ?> directive", null, null, 0, 0);
+    }
+
 public:
 	this()
 	{
@@ -860,8 +935,15 @@ public:
 
 	void parse(string text)
 	{
+        // Check XML declaration if we need to convert the source encoding to UTF-8
+        text = text.stripLeft();
+        if (text.startsWith("<?xml "))
+        {
+            text = processXMLDeclaration(text);
+        }
+
 		m_states.clear();
-		m_states.insertFront(new StartState(this));
+		m_states.insertFront(new NormalState(this));
 // 
 		try
 		{

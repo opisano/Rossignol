@@ -42,6 +42,7 @@ import system;
 
 version (Windows)
 {
+    import windows;
     enum TOKEN_NAME = "Global\\RossignolMutex";
     enum SERVER_ADDRESS = r"\\.\pipe\RossignolPipe";
 }

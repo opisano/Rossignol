@@ -306,7 +306,7 @@ class MainWindow : AdjustableComponent
 	static shared(FeedInfo) getFeedInfo(string feedURL)
 	{
 		string xmlContent = assumeUnique(cast(char[])get!(AutoProtocol, ubyte)(feedURL));
-		auto parser = new Parser();
+		auto parser = new xml.parser.Parser();
 		auto handler = new FeedContentHandler(feedURL);
 		parser.contentHandler = handler;
 
