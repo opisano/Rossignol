@@ -1051,10 +1051,19 @@ public:
 	{
 		// get feed directory
 		auto feedDir = buildPath(getSettingsDirectory(), "feeds");
+		if (!feedDir.exists())
+		{
+		    mkdirRecurse(feedDir);
+		}
 
 		// for each xml file in feed directory
-		foreach (entry; dirEntries(feedDir, SpanMode.shallow).filter!(e => e.name.endsWith(".xml")))
+		foreach (entry; dirEntries(feedDir, SpanMode.shallow))
 		{
+			if (!entry.name.endsWith(".xml"))
+			{
+			    continue;
+			}
+				
 			auto groupName = baseName(stripExtension(entry.name));
 
 			// look for the corresponding group TreeItem 

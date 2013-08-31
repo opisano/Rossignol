@@ -308,7 +308,7 @@ string getTokenName()
         throwLastError();
     }
     
-    return buildPath(to!string(*pw.pw_dir), ".RossignolMutex");
+    return buildPath(to!string((*pw).pw_dir), ".RossignolMutex");
 }
 
 /**
@@ -324,7 +324,7 @@ string getUserSettingsDirectory()
         throwLastError();
     }
     
-    string userdir = to!string(*pw.pw_dir);
+    string userdir = to!string((*pw).pw_dir);
     return buildPath(userdir, ".config");
 }
 
@@ -342,7 +342,8 @@ string getApplicationPath()
         throwLastError();
     }
     
-    return buffer[0..count].idup;
+    auto s = buffer[0..count].idup;
+    return dirName(s);
 }
     
 }
