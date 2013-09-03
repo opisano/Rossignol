@@ -24,6 +24,7 @@ import std.array;
 import std.conv;
 import std.string;
 import std.typecons;
+import std.c.stdlib;
 import std.c.time;
 
 import org.eclipse.swt.SWT;
@@ -126,8 +127,11 @@ private void displayURL(string url)
 	version (Windows)
 	{
 		import std.c.windows.windows;
-
 		ShellExecuteA(null, "open".ptr, toStringz(url), null, null, 0);
+	}
+	version (linux)
+	{
+		std.c.stdlib.system(toStringz("xdg-open " ~ url));
 	}
 }
 

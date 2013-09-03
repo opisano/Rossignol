@@ -600,7 +600,14 @@ public:
 		foreach (i; 0..items.length)
 		{
 			auto updateTask = task!updateTreeItem(items[i], fis[i], m_tblArticles, ath);
-			taskPool.put(updateTask);
+			version (Windows)
+			{
+			    taskPool.put(updateTask);
+			}
+			version (linux)
+			{
+			    updateTask.executeInNewThread();
+			}
 		}
 	}
 
@@ -622,7 +629,14 @@ public:
 			foreach (i; 0..items.length)
 			{
 				auto removeTask = task!removeOldFeedsInItem(items[i], fis[i], threshold, m_tblArticles, ath);
-				taskPool.put(removeTask);
+				version (Windows)
+				{
+				    taskPool.put(removeTask);
+				}
+				version (linux)
+				{
+				    removeTask.executeInNewThread();
+				}
 			}
 		}
 	}
@@ -637,7 +651,14 @@ public:
 		foreach (i; 0..items.length)
 		{
 			auto removeTask = task!removeHistoryInItem(items[i], fis[i], m_treeFeeds, m_tblArticles, ath);
-			taskPool.put(removeTask);
+			version (Windows)
+			{
+			    taskPool.put(removeTask);
+			}
+			version (linux)
+			{
+			    removeTask.executeInNewThread();
+			}
 		}
 	}
 
