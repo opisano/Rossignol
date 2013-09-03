@@ -211,7 +211,7 @@ public:
 }
 
 
-final class RemoveOldFeedsDialog : Dialog
+final class RemoveOldArticlesDialog : Dialog
 {
 	MainWindow m_mainWindow;
 	Shell m_dialog;
@@ -243,10 +243,10 @@ public:
 		gl.marginWidth = 10;
 		m_dialog.setLayout(gl);
 		
-		m_dialog.setText("Remove old feeds...");
+		m_dialog.setText("Remove old articles...");
 
 		auto lblPrompt = new Label(m_dialog, SWT.NONE);
-		lblPrompt.setText("Remove feeds older than:");
+		lblPrompt.setText("Remove articles older than:");
 		GridData gridData = new GridData();
 		gridData.horizontalAlignment = GridData.FILL;
 		gridData.horizontalSpan = 2;

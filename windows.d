@@ -106,10 +106,14 @@ extern (Windows)
 
     BOOL DisconnectNamedPipe(HANDLE hNamedPipe);
 
-    HANDLE CreateMutexW(
-                        LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+    HANDLE CreateMutexW(LPSECURITY_ATTRIBUTES lpSecurityAttributes,
                         BOOL bInitialOwner,
                         LPCWSTR lpName);
+
+    BOOL GetUserPreferredUILanguages(DWORD,
+                                     PULONG,
+                                     PWSTR,
+                                     PULONG);
 }
 
 
@@ -418,6 +422,31 @@ string getApplicationPath()
     
     auto s = to!string(szAppPath[0..nChars]);
     return dirName(s);
+}
+
+string getUserLanguage()
+{
+    ULONG ulLanguageCount;
+    WCHAR[1024] wszLangBuffer;
+    ULONG ulBufferLength = wszLangBuffer.length;
+
+    auto result = GetUserPreferredUILanguages(MUI_LANGUAGE_NAME,
+                                              &ulLanguageCount,
+                                              wszLangBuffer.ptr,
+                                              &ulBufferLength);
+
+    if (result == FALSE)
+    {
+        throwLastError();
+    }
+
+    if (ulLanguageCount == 0)
+    {
+        return null;
+    }
+
+    auto len = slen(wszLangBuffer.ptr);
+    return to!string(wszLangBuffer[0..len]);
 }
 
 }
