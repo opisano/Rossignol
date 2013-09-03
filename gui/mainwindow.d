@@ -98,12 +98,12 @@ class MainWindow : AdjustableComponent
 
 	// Menu items
 	Menu		 m_fileMenu;
-	Menu         m_editMenu;
+	Menu         m_historyMenu;
 	MenuItem     m_newFeedItem;
 	MenuItem     m_newGroup;
 	MenuItem     m_refreshAllFeeds;
 	MenuItem	 m_exitItem;
-	MenuItem     m_removeOldFeeds;
+	MenuItem     m_removeOldArticles;
 	MenuItem     m_removeHistory;
     Menu         m_helpMenu;
     MenuItem     m_about;
@@ -161,15 +161,15 @@ class MainWindow : AdjustableComponent
         m_shell.setMenuBar(menuBar);
 
 		// Create edit menu
-		MenuItem cascadeEditMenu = new MenuItem(menuBar, SWT.CASCADE);
-		cascadeEditMenu.setText("&Edit");
-		m_editMenu = new Menu(m_shell, SWT.DROP_DOWN);
-		cascadeEditMenu.setMenu(m_editMenu);
+		MenuItem cascadeHistoryMenu = new MenuItem(menuBar, SWT.CASCADE);
+		cascadeHistoryMenu.setText("&History");
+		m_historyMenu = new Menu(m_shell, SWT.DROP_DOWN);
+		cascadeHistoryMenu.setMenu(m_historyMenu);
 
-		m_removeOldFeeds = new MenuItem(m_editMenu, SWT.PUSH);
-		m_removeOldFeeds.setText("Remove old feeds...");
+		m_removeOldArticles = new MenuItem(m_historyMenu, SWT.PUSH);
+		m_removeOldArticles.setText("Remove old articles...");
 
-		m_removeHistory = new MenuItem(m_editMenu, SWT.PUSH);
+		m_removeHistory = new MenuItem(m_historyMenu, SWT.PUSH);
 		m_removeHistory.setText("Remove feeds History");
 
         // Create help menu
@@ -221,12 +221,12 @@ class MainWindow : AdjustableComponent
 			});
 
 		// edit menu items
-		m_removeOldFeeds.addSelectionListener(
+		m_removeOldArticles.addSelectionListener(
 			new class SelectionAdapter
 			{
 				override public void widgetSelected(SelectionEvent e)
 				{
-					removeOldFeedsAction();
+					removeOldArticlesAction();
 				}
 			});
 
@@ -605,9 +605,9 @@ public:
 	}
 
 	@Action
-	void removeOldFeedsAction()
+	void removeOldArticlesAction()
 	{
-		auto dlg = new RemoveOldFeedsDialog(this, 0);
+		auto dlg = new RemoveOldArticlesDialog(this, 0);
 		int choice = dlg.open();
 		if (choice != -1)
 		{

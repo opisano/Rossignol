@@ -322,7 +322,7 @@ final class ArticleTable : AdjustableComponent
                     {
                     }
 
-                    if (!content.empty)
+                    if (!strip(content).empty)
                     {
 					    tip = new Shell(m_mainWindow.m_shell, SWT.ON_TOP | SWT.TOOL);
 					    tip.setLayout(new FillLayout);
