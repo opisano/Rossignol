@@ -23,6 +23,7 @@ version (linux)
 {
     
 import core.stdc.errno;
+import core.stdc.stdlib;
 import core.stdc.string;
 import core.sys.posix.fcntl;
 import core.sys.posix.pwd;
@@ -31,6 +32,7 @@ import core.sys.posix.sys.socket;
 import core.sys.posix.sys.types;
 import core.sys.posix.sys.un;
 
+import std.algorithm;
 import std.conv;
 import std.path;
 import std.string;
@@ -344,6 +346,20 @@ string getApplicationPath()
     
     auto s = buffer[0..count].idup;
     return dirName(s);
+}
+
+string getUserLanguage()
+{
+	auto szLang = getenv("LANG".ptr);
+	if (szLang is null) // no LANG environment variable defined
+	{
+		return null;
+	}
+	
+	// remove any '.UTF-8' at the end of lang
+	auto lang = to!string(szLang);
+	auto r = findSplitBefore(lang, ".UTF-8");
+	return r[0];
 }
     
 }
