@@ -52,14 +52,19 @@ size_t[] indicesOf(R, T)(R haystack, T needle)
 	return indices.data();
 }
 
+
 version (linux)
 {
     import linux;
+    alias linux.IPC IPC;
+    alias linux.Token Token;
 }
 
 version(Windows)
 {
 	import windows;
+    alias windows.IPC IPC;
+    alias windows.Token Token;
 }
 
 string getUserSettingsDirectory()
@@ -94,14 +99,24 @@ string getSettingsDirectory()
 
 string getUserLanguage()
 {
-	version (Posix)
+	version (linux)
 	{
-	    return null;
+	    return linux.getUserLanguage();
 	}
 	version (Windows)
 	{
-		setlocale(LC_ALL, "");
-		return null;
+		return windows.getUserLanguage();
 	}
 }
 
+string getTokenName()
+{
+    version (linux)
+    {
+        return linux.getTokenName();
+    }
+    version (Windows)
+    {
+        return windows.getTokenName();
+    }
+}

@@ -109,11 +109,6 @@ extern (Windows)
     HANDLE CreateMutexW(LPSECURITY_ATTRIBUTES lpSecurityAttributes,
                         BOOL bInitialOwner,
                         LPCWSTR lpName);
-
-    BOOL GetUserPreferredUILanguages(DWORD,
-                                     PULONG,
-                                     PWSTR,
-                                     PULONG);
 }
 
 
@@ -424,13 +419,33 @@ string getApplicationPath()
     return dirName(s);
 }
 
+string getTokenName()
+{
+    return "Global\\RossignolMutex";
+}
+
 string getUserLanguage()
 {
+    alias extern(Windows) BOOL function(DWORD, PULONG, PWSTR, PULONG) func;
+
+    // Load kernel32.dll
+    func GetUserPreferredUILanguages;
+    auto hModule = LoadLibraryW("Kernel32.dll"w.ptr);
+
+    if (hModule is null)
+        throw new Exception("Cannot load kernel32.dll");
+
+    // don't forget to free hModule at scope exit
+    scope (exit)
+        FreeLibrary(hModule);
+
+    GetUserPreferredUILanguages = cast(func) GetProcAddress(hModule, "GetUserPreferredUILanguages");
+
     ULONG ulLanguageCount;
-    WCHAR[1024] wszLangBuffer;
+    WCHAR[64] wszLangBuffer;
     ULONG ulBufferLength = wszLangBuffer.length;
 
-    auto result = GetUserPreferredUILanguages(MUI_LANGUAGE_NAME,
+    auto result = GetUserPreferredUILanguages(0,
                                               &ulLanguageCount,
                                               wszLangBuffer.ptr,
                                               &ulBufferLength);

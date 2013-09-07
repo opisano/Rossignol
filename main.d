@@ -42,15 +42,11 @@ import system;
 
 version (Windows)
 {
-    import windows;
-    enum TOKEN_NAME = "Global\\RossignolMutex";
     enum SERVER_ADDRESS = r"\\.\pipe\RossignolPipe";
 }
 version (linux)
 {
-    import linux;
     enum SERVER_ADDRESS = "/tmp/socket-rossignol";
-    string TOKEN_NAME;
 }
 
 /**
@@ -64,18 +60,20 @@ class IPCServerThread : Thread
 
     void run()
     {
-        // Create a server pipe
+        // Create a server IPC mecanism
         auto ipc = IPC.createServer(SERVER_ADDRESS);
 
         while (1)
         {
-            // wait for data from other process
+            // wait for data from another process
             string s = ipc.read();
             string[] lines = s.splitLines();
             foreach (line; lines)
             {
+                // if the other process URLs of feed to add
                 if (line.startsWith("feed://"))
                 {
+                    // Add the feed (in the GUI thread)
                     m_display.asyncExec(
                         new class Runnable
                         {
@@ -145,15 +143,12 @@ public:
 }
 
 int main(string[] argv)
-{
-    version (linux)
-    {
-        TOKEN_NAME = getTokenName();
-    }
+{    
+    auto s = system.getUserLanguage();
     
     // Named mutex used to detect if another instance of this application 
     // is already running.
-    Token mutex = Token.create(TOKEN_NAME);
+    Token mutex = Token.create(getTokenName());
     if (mutex.owned) // No other instance is running
     {
 	    Application.setCurrentDir();	

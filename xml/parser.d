@@ -1107,28 +1107,9 @@ public:
 		char[5] entityChars = [ '"', '&', '\'', '<', '>' ];
 		string[5] entityStrings = [ "&quot;", "&amp;", "&apos;", "&lt;", "&gt;" ];
 
-		ptrdiff_t binarySearch(char[] haystack, char needle)
-		{
-			size_t imin = 0;
-			size_t imax = haystack.length -1;
-
-			while (imin < imax)
-			{
-				size_t imid = (imin+imax) >> 1;
-				if (haystack[imid] < needle)
-					imin = imin+1;
-				else
-					imax = imid;
-			}
-			if ((imax == imin) && (haystack[imin] == needle))
-				return imin;
-			else
-				return -1;
-		}
-
 		for (size_t index = 0; index < s.length; ++index)
 		{
-			auto found = binarySearch(entityChars[], s[index]);
+			auto found = countUntil(entityChars[], s[index]);
 			if (found != -1)
 			{
 				return s[0..index] ~ entityStrings[found] ~ encodeEntities(s[index+1..$]);

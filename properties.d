@@ -19,15 +19,27 @@ Copyright 2013 Olivier Pisano
 
 module properties;
 
+/*
+ * This module implements reading and writing of properties files.
+ * Properties file are a equivalent of Java .properties files or .ini files
+ * (minus there is no section structures).
+ *
+ * File structure are juste lines of "Key = value".
+ */
+
 import std.algorithm;
 import std.file;
 import std.range;
 import std.stdio;
 import std.string;
 
+// For the moment, the Properties type is just an alias to a hashmap of 
+// string, string. If extra functionality is need, we can 
 alias string[string] Properties;
 
-
+/**
+ * Copies all the content of a Properties instance into another.
+ */
 void addAll(ref Properties props, const Properties other)
 {
 	foreach (key; other.byKey())
@@ -36,6 +48,9 @@ void addAll(ref Properties props, const Properties other)
 	}
 }
 
+/**
+ * Writes the content of a Properties instance into a file.
+ */
 void writeToFile(const ref Properties props, string filename)
 {
 	// sort keys
@@ -61,7 +76,9 @@ void writeToFile(const ref Properties props, string filename)
 	f.close();
 }
 
-
+/**
+ * Reads the content of a Properties instance from a file.
+ */
 void loadFromFile(out Properties props, string filename)
 {
 	auto f = File(filename, "r");

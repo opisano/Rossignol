@@ -19,17 +19,26 @@ Copyright 2013 Olivier Pisano
 
 module resources;
 
+import std.exception;
+import std.file;
+import std.path;
+
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Display;
 
+import properties;
 
 class ResourceManager
 {
 private:
 	Display m_disp;
+    // Holds interface images
 	Image[string] m_images;
+    // Holds interface waiting animation
 	Image[]       m_imageMap16;
+    // Holds interface texts
+    Properties    m_texts;
 
 public:
 	this(Display disp)
@@ -145,4 +154,21 @@ public:
 	{
 		return m_imageMap16;
 	}
+
+    /**
+     * Load language texts.
+     */
+    void loadLanguageTexts(string locale)
+    {
+        auto langFile = buildPath("lang", locale ~ ".properties");
+
+        if (locale is null || !langFile.exists())
+        {
+            langFile = buildPath("lang", "en-US.properties");
+        }
+
+        enforce(langFile.exists());
+
+        m_texts.loadFromFile(langFile);
+    }
 }

@@ -53,30 +53,28 @@ import xml.handler;
 import xml.parser;
 
 /**
- * Modelizes an article in a Feed
+ * Modelizes an article in a Feed.
+ * This class is immutable, since articles are published by websites and are not to 
+ * be modified by Rossignol users themselves.
  */
 final class FeedArticle
 {
+    // Article title
 	string m_title;
 
+    // Article author
 	string m_author;
 
+    // Article description
 	string m_description;
 
+    // Article url
 	string m_url;
 
+    // last date of modification
 	time_t m_time;
 
 public:
-	this(string title, string author, string description, string url, time_t time)
-	{
-		m_title		  = title;
-		m_author	  = author;
-		m_description = description;
-		m_url		  = url;
-		m_time        = time;
-	}
-
 	this(string title, string author, string description, string url, time_t time) immutable
 	{
 		m_title		  = title;
@@ -86,32 +84,35 @@ public:
 		m_time        = time;
 	}
 
-	string getTitle() const pure nothrow
+	string getTitle() immutable pure nothrow
 	{
 		return m_title;
 	}
 
-	string getAuthor() const pure nothrow
+	string getAuthor() immutable pure nothrow
 	{
 		return m_author;
 	}
 
-	string getURL() const pure nothrow
+	string getURL() immutable pure nothrow
 	{
 		return m_url;
 	}
 
-	string getDescription() const pure nothrow
+	string getDescription() immutable pure nothrow
 	{
 		return m_description;
 	}
 
-	time_t getTime() const pure nothrow
+	time_t getTime() immutable pure nothrow
 	{
 		return m_time;
 	}
 
-	string toXML() const
+    /**
+     * Serializes an article in XML format.
+     */
+	string toXML() immutable
 	{
 		return format("<article title=\"%s\" author=\"%s\" description=\"%s\" url=\"%s\" time=\"%s\"/>",
 					  xml.parser.Parser.encodeEntities(m_title), 
@@ -122,38 +123,35 @@ public:
 	}
 }
 
+// For simplicity, create an alias. 
 alias immutable(FeedArticle) Article;
 
-/**
- * Interface to implement in order to react to a change in a FeedInfo object.
- */
-interface FeedInfoListener
-{
-	/**
-	 * Signals articles have been added to a feed
-	 */
-	void articlesAdded(shared(FeedInfo) src, size_t count);
-}
 
 /**
- * Modelizes a Feed
+ * This class presents a thread-safe abstraction of a Feed, independantly 
+ * of its format (RSS, Atom or anything).
+ * 
+ * This class only provides the most common denominator between all the 
+ * feed formats supported in Rossignol, therefore I am rather reluctant 
+ * to add any new functionality to this class since it could prevent 
+ * the adoption of a new feed format if it were not to support this 
+ * functionality.
  */
 final synchronized class FeedInfo
 {
+    // name of the feed
 	string		m_name;
-
+    // link to the feed website
 	string		m_link;
-
+    // url where to load the feed (
 	string      m_url;
-
+    // Articles in the feed
 	Article[]	m_articles;
-
+    // url to the feed icon
 	string      m_icon;
 
 	// cached for performance reasons
 	time_t      m_mostRecentArticle; 
-
-	FeedInfoListener[FeedInfoListener] m_listeners;
 
 	/**
 	 * Used when deserializing
@@ -207,9 +205,12 @@ public:
 		m_icon = ico;
 	}
 
+    /**
+     * Adds articles to this feed.
+     */
 	size_t add(Article[] articles)
 	{
-		// get our most recent article time
+		// get our most recent article time (lazy fashioned)
 		if (m_mostRecentArticle == time_t.init)
 		{
 			m_mostRecentArticle = m_articles
@@ -217,18 +218,21 @@ public:
 									.reduce!max;
 		}
 
-        
 		// filter the articles more recent than our most recent article
 		auto newArticles = articles.filter!((a) => a.getTime() > m_mostRecentArticle);
 		
 		size_t added;
 		if (!newArticles.empty)
 		{
+            // use an Appender, since we may put add many articles 
+            // that may trigger multiple heap allocations
+            auto p = appender(m_articles);
 			foreach (a; newArticles)
 			{
-				m_articles ~= a;
+		        p.put(a);
 				added++;
 			}
+            m_articles = p.data();
 
 			// update our most recent article time
 			m_mostRecentArticle = newArticles.map!((a) => a.getTime())
@@ -253,6 +257,7 @@ public:
 	}
 	body
 	{
+        // since Article is immutable, we create a copy instead of 
 		auto moreRecent = appender!(Article[])();
 		foreach (a; m_articles)
 		{
@@ -262,6 +267,9 @@ public:
 		m_articles = moreRecent.data();
 	}
 
+    /**
+     * Serializes A feed as XML.
+     */
 	string toXML() const
 	{
 		auto buffer = appender!string(format("<feed name=\"%s\" url=\"%s\" link=\"%s\" ", xml.parser.Parser.encodeEntities(m_name), m_url, m_link));
@@ -280,6 +288,9 @@ public:
 	}
 }
 
+/** 
+ * XML deserialization
+ */
 shared(FeedInfo)[] loadFeedsFromXML(string filename)
 {
 	shared(FeedInfo)[] result;
