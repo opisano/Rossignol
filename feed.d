@@ -217,6 +217,7 @@ public:
 									.reduce!max;
 		}
 
+        
 		// filter the articles more recent than our most recent article
 		auto newArticles = articles.filter!((a) => a.getTime() > m_mostRecentArticle);
 		
@@ -645,7 +646,7 @@ public:
 	{
 		// create a FeedInfo object from the parsed feed
 		auto entries = m_currentFeed.entries.data();
-		auto articles = uninitializedArray!(FeedArticle[])(entries.length);
+        auto articles = appender!(Article[])();
 
 		// Fill the articles array from entries 
 		foreach (i, entry; entries)
@@ -690,7 +691,7 @@ public:
 			// Get article time
 			time_t t = SysTime.fromISOExtString(entry.updated).toUnixTime();
 
-			articles[i] = new FeedArticle(title, author, take(description, 500), url, t);
+			articles.put(new Article(title, author, take(description, 500), url, t));
 		}
 
 		// create the Feed object
@@ -699,7 +700,7 @@ public:
 		string link = m_currentFeed.links.data().empty ? "" : m_currentFeed.links.data()[0].href;
 		
 
-		auto fi = new shared(FeedInfo)(name, url, link, assumeUnique(articles));
+		auto fi = new shared(FeedInfo)(name, url, link, articles.data());
 		fi.setIcon(m_currentFeed.icon);
 		m_owner.setFeedInfo(fi);
 	}
@@ -1008,7 +1009,8 @@ public:
 	{
 		// publish the parsed feed as a FeedInfo object.
 		auto items = m_currentFeed.items.data();
-		auto articles = uninitializedArray!(FeedArticle[])(items.length);
+		//auto articles = uninitializedArray!(FeedArticle[])(items.length);
+        auto articles = appender!(Article[])();
 		foreach (i, item; items)
 		{
 			// links can contain & characters for GET parameter
@@ -1050,15 +1052,15 @@ public:
 			{
 			}
 
-			articles[i] = new FeedArticle(title, 
+			articles.put(new Article(title, 
 										  auth,
 										  take(desc, 500),
 										  link,
-										  item.pubDate);
+										  item.pubDate));
 		}
 		auto feedInfo = new shared FeedInfo(xml.parser.Parser.translateEntities(m_currentFeed.title),  
 											m_owner.m_originURL, m_currentFeed.link, 
-											assumeUnique(articles));
+											articles.data());
 		m_owner.setFeedInfo(feedInfo);
 	}
 
@@ -1377,7 +1379,8 @@ public:
 	{
 		// publish the parsed feed as a FeedInfo object.
 		auto items = m_currentChannel.items.data();
-		auto articles = uninitializedArray!(FeedArticle[])(items.length);
+		//auto articles = uninitializedArray!(FeedArticle[])(items.length);
+        auto articles = appender!(Article[])();
 		foreach (i, item; items)
 		{
 			// links can contain & characters for GET parameter
@@ -1419,15 +1422,15 @@ public:
 			{
 			}
 
-			articles[i] = new FeedArticle(title, 
+			articles.put(new Article(title, 
 										  creator,
 										  take(desc, 500),
 										  link,
-										  item.updated);
+										  item.updated));
 		}
 		auto feedInfo = new shared FeedInfo(xml.parser.Parser.translateEntities(m_currentChannel.title),  
 											m_owner.m_originURL, m_currentChannel.link, 
-											assumeUnique(articles));
+											articles.data());
 		m_owner.setFeedInfo(feedInfo);
 	}
 
