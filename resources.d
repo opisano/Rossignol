@@ -171,4 +171,9 @@ public:
 
         m_texts.loadFromFile(langFile);
     }
+
+    string getText(string key) const
+    {
+        return m_texts[key];
+    }
 }

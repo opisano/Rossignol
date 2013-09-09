@@ -24,7 +24,6 @@ import std.array;
 import std.conv;
 import std.string;
 import std.typecons;
-import std.c.stdlib;
 import std.c.time;
 
 import org.eclipse.swt.SWT;
@@ -127,11 +126,8 @@ private void displayURL(string url)
 	version (Windows)
 	{
 		import std.c.windows.windows;
+
 		ShellExecuteA(null, "open".ptr, toStringz(url), null, null, 0);
-	}
-	version (linux)
-	{
-		std.c.stdlib.system(toStringz("xdg-open " ~ url));
 	}
 }
 
@@ -233,21 +229,21 @@ final class ArticleTable : AdjustableComponent
 		{
 		case SortMode.title:
 			if (m_sortOrder == SortOrder.ascending)
-				sort!(compByTitle)(m_articles);
+				sort!(compByTitle, SwapStrategy.stable)(m_articles);
 			else
-				sort!(compByTitle!(SortOrder.descending))(m_articles);
+				sort!(compByTitle!(SortOrder.descending), SwapStrategy.stable)(m_articles);
 			break;
 		case SortMode.author:
 			if (m_sortOrder == SortOrder.ascending)
-				sort!(compByAuthor)(m_articles);
+				sort!(compByAuthor, SwapStrategy.stable)(m_articles);
 			else
-				sort!(compByAuthor!(SortOrder.descending))(m_articles);
+				sort!(compByAuthor!(SortOrder.descending), SwapStrategy.stable)(m_articles);
 			break;
 		case SortMode.time:
 			if (m_sortOrder == SortOrder.ascending)
-				sort!(compByTime)(m_articles);
+				sort!(compByTime, SwapStrategy.stable)(m_articles);
 			else
-				sort!(compByTime!(SortOrder.descending))(m_articles);
+				sort!(compByTime!(SortOrder.descending), SwapStrategy.stable)(m_articles);
 			break;
 		}
 		m_sortMode = mode;
@@ -364,12 +360,12 @@ public:
 		
 		// create the table columns
 		m_colTitle = new TableColumn(m_tblArticles, SWT.NONE);
-		m_colTitle.setText("Title");
+        m_colTitle.setText(mainWindow.getResourceManager().getText("TABLE_TITLE_COLUMN"));
 		m_colTitle.setWidth(280);
 		m_colAuthor = new TableColumn(m_tblArticles, SWT.NONE);
-		m_colAuthor.setText("Author");
+        m_colAuthor.setText(mainWindow.getResourceManager().getText("TABLE_AUTHOR_COLUMN"));
 		m_colDate = new TableColumn(m_tblArticles, SWT.NONE);
-		m_colDate.setText("Date");
+        m_colDate.setText(mainWindow.getResourceManager().getText("TABLE_DATE_COLUMN"));
 		m_tblArticles.setHeaderVisible(true);
 		m_tblArticles.setLinesVisible(true);
 
@@ -463,7 +459,7 @@ public:
 			return;
 		}
 
-		auto article = cast(FeedArticle) item.getData();
+		auto article = cast(Article) item.getData();
 
 		if (article is null)
 		{

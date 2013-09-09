@@ -144,9 +144,7 @@ public:
 
 int main(string[] argv)
 {    
-    auto s = system.getUserLanguage();
-    
-    // Named mutex used to detect if another instance of this application 
+    // Named token used for detecting if another instance of this application 
     // is already running.
     Token mutex = Token.create(getTokenName());
     if (mutex.owned) // No other instance is running

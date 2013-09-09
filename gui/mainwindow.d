@@ -116,7 +116,6 @@ class MainWindow : AdjustableComponent
 	 */
 	void loadImages()
 	{
-		m_resMan = new ResourceManager(getDisplay());
 		m_resMan.loadImage("img/16x16/document-new.png", "newfeed");
 		m_resMan.loadImage("img/16x16/folder-new.png", "newgroup");
 		m_resMan.loadImage("img/rossignol.png", "appicon");
@@ -135,51 +134,52 @@ class MainWindow : AdjustableComponent
 		Menu menuBar = new Menu(m_shell, SWT.BAR);
 		// Create File Menu
         MenuItem cascadeFileMenu = new MenuItem(menuBar, SWT.CASCADE);
-        cascadeFileMenu.setText("&File");
+        cascadeFileMenu.setText(m_resMan.getText("FILE_MENU"));
 
         m_fileMenu = new Menu(m_shell, SWT.DROP_DOWN);
         cascadeFileMenu.setMenu(m_fileMenu);
 
 		m_newFeedItem = new MenuItem(m_fileMenu, SWT.PUSH);
-		m_newFeedItem.setText("&New feed...");
+        m_newFeedItem.setText(m_resMan.getText("FILE_NEW_FEED"));
 		m_newFeedItem.setImage(m_resMan.getImage("newfeed"));
 
 		m_newGroup = new MenuItem(m_fileMenu, SWT.PUSH);
 		m_newGroup.setText("New &group");
+        m_newGroup.setText(m_resMan.getText("FILE_NEW_GROUP"));
 		m_newGroup.setImage(m_resMan.getImage("newgroup"));
 
 		new MenuItem(m_fileMenu, SWT.SEPARATOR);
 
 		m_refreshAllFeeds = new MenuItem(m_fileMenu, SWT.PUSH);
-		m_refreshAllFeeds.setText("&Refresh all feeds");
+        m_refreshAllFeeds.setText(m_resMan.getText("FILE_REFRESH_ALL_FEEDS"));
 		m_refreshAllFeeds.setImage(m_resMan.getImage("refresh"));
 		
 		new MenuItem(m_fileMenu, SWT.SEPARATOR);
 
         m_exitItem= new MenuItem(m_fileMenu, SWT.PUSH);
-        m_exitItem.setText("E&xit");
+        m_exitItem.setText(m_resMan.getText("FILE_EXIT"));
         m_shell.setMenuBar(menuBar);
 
 		// Create edit menu
 		MenuItem cascadeHistoryMenu = new MenuItem(menuBar, SWT.CASCADE);
-		cascadeHistoryMenu.setText("&History");
+        cascadeHistoryMenu.setText(m_resMan.getText("HISTORY_MENU"));
 		m_historyMenu = new Menu(m_shell, SWT.DROP_DOWN);
 		cascadeHistoryMenu.setMenu(m_historyMenu);
 
 		m_removeOldArticles = new MenuItem(m_historyMenu, SWT.PUSH);
-		m_removeOldArticles.setText("Remove old articles...");
+        m_removeOldArticles.setText(m_resMan.getText("HISTORY_REMOVE_OLD_ARTICLES"));
 
 		m_removeHistory = new MenuItem(m_historyMenu, SWT.PUSH);
-		m_removeHistory.setText("Remove feeds History");
+        m_removeHistory.setText(m_resMan.getText("HISTORY_REMOVE_FEEDS_HISTORY"));
 
         // Create help menu
         MenuItem cascadeHelpMenu = new MenuItem(menuBar, SWT.CASCADE);
-        cascadeHelpMenu.setText("&Help");
+        cascadeHelpMenu.setText(m_resMan.getText("HELP_MENU"));
         m_helpMenu = new Menu(m_shell, SWT.DROP_DOWN);
         cascadeHelpMenu.setMenu(m_helpMenu);
 
         m_about = new MenuItem(m_helpMenu, SWT.PUSH);
-        m_about.setText("&About");
+        m_about.setText(m_resMan.getText("HELP_ABOUT"));
        
 
 
@@ -481,6 +481,8 @@ public:
 	{
 		m_shell = new Shell(display);
 		m_shell.setText("Rossignol");
+        m_resMan = new ResourceManager(getDisplay());
+        m_resMan.loadLanguageTexts(getUserLanguage());
 		loadImages();
 		createMenus();
 		createContent();
@@ -548,7 +550,7 @@ public:
 	@Action
 	void newFeedGroupAction()
 	{
-		m_treeFeeds.addGroup("NewGroup");
+        m_treeFeeds.addGroup(m_resMan.getText("NEW_GROUP"));
 	}
 
 	/**
