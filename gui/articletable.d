@@ -29,6 +29,8 @@ import std.c.time;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.MouseAdapter;
 import org.eclipse.swt.events.MouseEvent;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.FillLayout;
@@ -36,6 +38,8 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Listener;
+import org.eclipse.swt.widgets.Menu;
+import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
@@ -129,6 +133,11 @@ private void displayURL(string url)
 
 		ShellExecuteA(null, "open".ptr, toStringz(url), null, null, 0);
 	}
+    version (linux)
+    {
+         std.c.stdlib.system(toStringz("xdg-open " ~ url));
+    }
+
 }
 
 /**
@@ -161,6 +170,9 @@ final class ArticleTable : AdjustableComponent
 	// last column clicked
 	TableColumn             m_lastColumn;
 
+    // Right click menu
+    Menu                    m_popupMenu;
+
 	/**
 	 * Provides a callback for displaying an item 
 	 */
@@ -186,6 +198,12 @@ final class ArticleTable : AdjustableComponent
 				}
 			}
 			item.setData(cast(FeedArticle)article);
+
+            // if the article has an enclosure, display the icon
+            if (!article.getEnclosure().strip().empty)
+            {
+                item.setImage(m_mainWindow.getResourceManager().getImage("attachment"));
+            }
 		}
 	}
 
@@ -346,6 +364,45 @@ final class ArticleTable : AdjustableComponent
 		}
 	}
 
+    void populatePopupMenu(Article article)
+    {
+        // Clear menu
+        foreach (item; m_popupMenu.getItems())
+        {
+            item.dispose();
+        }
+
+        if (article is null)
+        {
+            return;
+        }
+
+        MenuItem mnuOpenURL = new MenuItem(m_popupMenu, 0);
+        mnuOpenURL.setText("Open article URL");
+        mnuOpenURL.addSelectionListener(
+            new class SelectionAdapter
+            {
+                override public void widgetSelected(SelectionEvent e)
+                {
+                    displayURL(article.getURL());
+                }
+            });
+
+        if (!article.getEnclosure().strip().empty)
+        {
+            MenuItem mnuEnclosure = new MenuItem(m_popupMenu, 0);
+            mnuEnclosure.setText("Open attachment");
+            mnuEnclosure.addSelectionListener(
+                new class SelectionAdapter
+                {
+                    override public void widgetSelected(SelectionEvent e)
+                    {
+                        displayURL(article.getEnclosure().strip());
+                    }
+                });
+        }
+    }
+
 public:
 	/**
 	 * Creates an article table
@@ -355,6 +412,7 @@ public:
 		m_mainWindow = mainWindow;
 		// create the SWT widget
 		m_tblArticles = new Table(parent, SWT.MULTI | SWT.FULL_SELECTION| SWT.BORDER | SWT.VIRTUAL);
+        m_popupMenu = new Menu(m_tblArticles);
 		m_sortMode = SortMode.time;
 		m_sortOrder = SortOrder.descending;
 		
@@ -383,6 +441,22 @@ public:
 					}
 					displayArticleInBrowser(item);
 				}
+
+                override public void mouseUp(MouseEvent e)
+                {
+                    if (e.button == 3)
+                    {
+                        // get TreeItem at position (e.x, e.y) and select it
+						Point relativePt = new Point(e.x, e.y);
+						auto item = m_tblArticles.getItem(relativePt);
+                        auto article = cast(Article)item.getData();
+                        populatePopupMenu(article);
+
+                        auto pt = m_tblArticles.getDisplay().getCursorLocation();
+                        m_popupMenu.setLocation(pt.x, pt.y);
+						m_popupMenu.setVisible(true);
+                    }
+                }
 			});
 
 		// set up sorting abilities
