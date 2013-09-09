@@ -71,16 +71,20 @@ final class FeedArticle
     // Article url
 	string m_url;
 
+    // URL of enclosure
+    string m_enclosure;
+
     // last date of modification
 	time_t m_time;
 
 public:
-	this(string title, string author, string description, string url, time_t time) immutable
+	this(string title, string author, string description, string url, string enclosure, time_t time) immutable
 	{
 		m_title		  = title;
 		m_author	  = author;
 		m_description = description;
 		m_url		  = url;
+        m_enclosure   = enclosure;
 		m_time        = time;
 	}
 
@@ -104,6 +108,11 @@ public:
 		return m_description;
 	}
 
+    string getEnclosure() immutable pure nothrow
+    {
+        return m_enclosure;
+    }
+
 	time_t getTime() immutable pure nothrow
 	{
 		return m_time;
@@ -114,11 +123,12 @@ public:
      */
 	string toXML() immutable
 	{
-		return format("<article title=\"%s\" author=\"%s\" description=\"%s\" url=\"%s\" time=\"%s\"/>",
+		return format("<article title=\"%s\" author=\"%s\" description=\"%s\" url=\"%s\" enclosure=\"%s\" time=\"%s\"/>",
 					  xml.parser.Parser.encodeEntities(m_title), 
 					  xml.parser.Parser.encodeEntities(m_author), 
 					  xml.parser.Parser.encodeEntities(m_description), 
-					  m_url, 
+					  m_url,
+                      m_enclosure,
 					  m_time);
 	}
 }
@@ -319,18 +329,30 @@ shared(FeedInfo)[] loadFeedsFromXML(string filename)
 			}
 			else if (qName == "article")
 			{
+                // get required arguments
 				string title = xml.parser.Parser.translateEntities(atts.getValue("title"));
 				string author = xml.parser.Parser.translateEntities(atts.getValue("author"));
 				string url = atts.getValue("url");
 				string description;
+                string enclosure;
+
+                // get optional argument description
 				auto index = atts.getIndex("description");
 				if (index != -1)
 				{
 					description = xml.parser.Parser.translateEntities(atts.getValue("description"));
 				}
+
+                // get optional argument enclosure
+                index = atts.getIndex("enclosure");
+                if (index != -1)
+                {
+                    enclosure = atts.getValue("enclosure");
+                }
+
 				time_t t = to!time_t(atts.getValue("time"));
 
-				result.back.appendArticle(new Article(title, author, description, url, t));
+				result.back.appendArticle(new Article(title, author, description, url, enclosure, t));
 			}
 		}
 
@@ -699,10 +721,18 @@ public:
 			}
 			string url = foundLink.front.href;
 
+            // 
+            string enclosure;
+            foundLink = find!(l => l.rel == "enclosure")(entry.links.data());
+            if (!foundLink.empty)
+            {
+                enclosure = foundLink.front.href;
+            }
+
 			// Get article time
 			time_t t = SysTime.fromISOExtString(entry.updated).toUnixTime();
 
-			articles.put(new Article(title, author, take(description, 500), url, t));
+			articles.put(new Article(title, author, take(description, 500), url, enclosure, t));
 		}
 
 		// create the Feed object
@@ -982,7 +1012,7 @@ final class RSS20Strategy : FeedStrategy
 		string guid;
 		time_t pubDate;
 		string source;
-		string image;
+        string enclosureURL;
 	}
 
 	static struct RSSFeed
@@ -1035,6 +1065,15 @@ public:
 			{
 			}
 
+            string enclosure = item.enclosureURL;
+            try
+            {
+                enclosure = xml.parser.Parser.translateEntities(enclosure);
+            }
+            catch(SAXParseException)
+            {
+            }
+
 			// if description contains HTML entities, translate them into UTF8
 			auto desc = item.description;
 			try 
@@ -1067,6 +1106,7 @@ public:
 										  auth,
 										  take(desc, 500),
 										  link,
+                                          enclosure,
 										  item.pubDate));
 		}
 		auto feedInfo = new shared FeedInfo(xml.parser.Parser.translateEntities(m_currentFeed.title),  
@@ -1145,6 +1185,14 @@ public:
 		{
 			m_inDcDate = true;
 		}
+        else if (qName == "enclosure")
+        {
+            auto index = atts.getIndex("url");
+            if (index != -1)
+            {
+                m_currentItem.enclosureURL = atts.getValue(index);
+            }
+        }
 	}
 
 	void endElement(string uri, string localName, string qName)
@@ -1437,9 +1485,10 @@ public:
 										  creator,
 										  take(desc, 500),
 										  link,
+                                          null,
 										  item.updated));
 		}
-		auto feedInfo = new shared FeedInfo(xml.parser.Parser.translateEntities(m_currentChannel.title),  
+        auto feedInfo = new shared FeedInfo(xml.parser.Parser.translateEntities(m_currentChannel.title),  
 											m_owner.m_originURL, m_currentChannel.link, 
 											articles.data());
 		m_owner.setFeedInfo(feedInfo);
