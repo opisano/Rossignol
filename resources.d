@@ -160,15 +160,27 @@ public:
      */
     void loadLanguageTexts(string locale)
     {
-        auto langFile = buildPath("lang", locale ~ ".properties");
+        // Fallback file to use when user locale is not found on the system
+        auto defaultFile = buildPath("lang", "en-US.properties");
 
-        if (locale is null || !langFile.exists())
+        // file to target
+        typeof(defaultFile) langFile;
+
+        if (locale is null) // use default file if could not retrieve locale
         {
-            langFile = buildPath("lang", "en-US.properties");
+            langFile = defaultFile;
+        }
+        else
+        {
+            langFile = buildPath("lang", locale ~ ".properties");
+            if (!langFile.exists()) // use default file if could not find locale file
+            {
+                langFile = buildPath("lang", "en-US.properties");
+            }
         }
 
+        // load texts from file
         enforce(langFile.exists());
-
         m_texts.loadFromFile(langFile);
     }
 

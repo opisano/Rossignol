@@ -42,7 +42,8 @@ import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
-import org.eclipse.swt.layout.FillLayout;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Listener;
@@ -52,6 +53,8 @@ import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.ToolBar;
+import org.eclipse.swt.widgets.ToolItem;
 
 import feed;
 import gui.animation;
@@ -65,11 +68,12 @@ import system;
 import xml.parser;
 import xml.except;
 
+
 /**
- * Serves as a User Defined Attributes in order to indicate a method in a GUI 
- * action. A GUI action is a method triggered in response to an event such a 
- * a button click or a menu item selection.
- */
+* Serves as a User Defined Attributes in order to indicate a method in a GUI 
+* action. A GUI action is a method triggered in response to an event such a 
+* a button click or a menu item selection.
+*/
 enum Action;
 
 /**
@@ -87,6 +91,68 @@ interface AdjustableComponent
  */
 class MainWindow : AdjustableComponent
 {
+    /**
+     * Class that encapsulates the refreshing feed timers.
+     */
+    class RefreshTimer : Runnable
+    {
+        // period before each execution, in milliseconds
+        int  m_period;
+
+    public:
+        /**
+         * Creates a timer with a 15 minutes period.
+         */
+        this()
+        {
+            m_period = 15 * 60 * 1_000; // 15 min
+        }
+
+        /**
+         * Creates a timer with a specified period.
+         */
+        this(int period)
+        in
+        {
+            assert (period > 0);
+        }
+        body
+        {
+            m_period = period;
+        }
+
+        /**
+         * Refresh the feeds.
+         */
+        override void run()
+        {
+            refreshAllItemsAction();
+            m_shell.getDisplay().timerExec(m_period, this);
+        }
+
+        /**
+         * Stop the timer
+         */
+        void stop()
+        {
+            m_shell.getDisplay().timerExec(-1, this);
+        }
+
+        /**
+         * Change the period of the timer.
+         */
+        void setPeriod(int period)
+        in
+        {
+            assert (period > 0);
+        }
+        body
+        {
+            stop();
+            m_period = period;
+        }
+    }
+
 	/// SWT window
 	Shell		 m_shell;
 
@@ -107,9 +173,18 @@ class MainWindow : AdjustableComponent
 	MenuItem     m_removeHistory;
     Menu         m_helpMenu;
     MenuItem     m_about;
+
+    // Toolbar items
+    ToolBar      m_toolbar;
+    ToolItem     m_tlbNewFeedItem;
+    ToolItem     m_tlbNewGroup;
+    ToolItem     m_tlbRefresh;
 	
 	// Stores and manages the lifecycle of our GUI images.
 	ResourceManager m_resMan;
+
+    // Timer for refreshing feeds
+    RefreshTimer    m_refreshTimer;
 
 	/**
 	 * Loads the images used for the GUI
@@ -118,11 +193,15 @@ class MainWindow : AdjustableComponent
 	{
 		m_resMan.loadImage("img/16x16/document-new.png", "newfeed");
 		m_resMan.loadImage("img/16x16/folder-new.png", "newgroup");
+        m_resMan.loadImage("img/32x32/document-new.png", "newfeed32");
+		m_resMan.loadImage("img/32x32/folder-new.png", "newgroup32");
 		m_resMan.loadImage("img/rossignol.png", "appicon");
 		m_resMan.loadImage("img/16x16/view-refresh.png", "refresh");
+        m_resMan.loadImage("img/32x32/view-refresh.png", "refresh32");
 		m_resMan.loadImage("img/16x16/folder-open.png", "openFolder");
 		m_resMan.loadImage("img/16x16/folder.png", "closedFolder");
 		m_resMan.loadImage("img/16x16/feed.png", "feed");
+        m_resMan.loadImage("img/16x16/mail-attachment.png", "attachment");
 		m_resMan.loadImageMap16("img/16x16/process-working.png");
 	}
 
@@ -256,12 +335,18 @@ class MainWindow : AdjustableComponent
 	 */
 	void createContent()
 	{
-		m_shell.setLayout(new FillLayout());
 		m_sashForm = new SashForm(m_shell, SWT.HORIZONTAL | SWT.SMOOTH);
 		m_treeFeeds = new FeedTree(this, m_sashForm, SWT.SINGLE | SWT.H_SCROLL | SWT.V_SCROLL);
 		m_treeFeeds.loadFromFile();
 		m_tblArticles = new ArticleTable(this, m_sashForm, SWT.SINGLE | SWT.H_SCROLL | SWT.V_SCROLL);
 		m_sashForm.setWeights([1, 4]);
+
+        auto gridData = new GridData();
+        gridData.horizontalAlignment = GridData.FILL;
+        gridData.verticalAlignment = GridData.FILL;
+        gridData.grabExcessHorizontalSpace = true;
+        gridData.grabExcessVerticalSpace = true;
+        m_sashForm.setLayoutData(gridData);
 
 		m_shell.addListener(SWT.Close, 
 			new class Listener
@@ -299,6 +384,52 @@ class MainWindow : AdjustableComponent
 				}
 			});
 	}
+
+    /**
+     * Method responsible for creating the toolbar and its buttons.
+     */
+    void createToolbar()
+    {
+        m_toolbar = new ToolBar(m_shell, SWT.FLAT | SWT.WRAP | SWT.HORIZONTAL);
+
+        m_tlbNewFeedItem = new ToolItem(m_toolbar, SWT.PUSH);
+        m_tlbNewFeedItem.setImage(m_resMan.getImage("newfeed32"));
+        m_tlbNewFeedItem.addSelectionListener(
+            new class SelectionAdapter
+            {
+                override public void widgetSelected(SelectionEvent event)
+                {
+                    newFeedItemAction();
+                }
+            });
+
+        m_tlbNewGroup = new ToolItem(m_toolbar, SWT.PUSH);
+        m_tlbNewGroup.setImage(m_resMan.getImage("newgroup32"));
+        m_tlbNewGroup.addSelectionListener(
+            new class SelectionAdapter
+            {
+                override public void widgetSelected(SelectionEvent event)
+                {
+                    newFeedGroupAction();
+                }
+            });
+
+        new ToolItem(m_toolbar, SWT.SEPARATOR);
+
+        m_tlbRefresh = new ToolItem(m_toolbar, SWT.PUSH);
+        m_tlbRefresh.setImage(m_resMan.getImage("refresh32"));
+        m_tlbRefresh.addSelectionListener(
+            new class SelectionAdapter
+            {
+                override public void widgetSelected(SelectionEvent event)
+                {
+                    refreshAllItemsAction();
+                }
+            });
+        
+
+        m_toolbar.pack();
+    }
 
 	/**
 	 * 
@@ -483,10 +614,16 @@ public:
 		m_shell.setText("Rossignol");
         m_resMan = new ResourceManager(getDisplay());
         m_resMan.loadLanguageTexts(getUserLanguage());
+        m_refreshTimer = new RefreshTimer();
 		loadImages();
 		createMenus();
+        auto layout = new GridLayout();
+        layout.numColumns = 1;
+        m_shell.setLayout(layout);
+        createToolbar();
 		createContent();
 		m_shell.setImage(m_resMan.getImage("appicon"));
+        m_shell.getDisplay.timerExec(m_refreshTimer.m_period, m_refreshTimer);
 	}
 
 	void dispose()
