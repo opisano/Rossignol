@@ -19,8 +19,6 @@ Copyright 2013 Olivier Pisano
 
 module gui.mainwindow;
 
-import core.time;
-
 import std.algorithm;
 import std.conv;
 import std.exception;
@@ -447,6 +445,7 @@ class MainWindow : AdjustableComponent
 	}
 
 
+<<<<<<< HEAD
 	static void updateTreeItems(MainWindow self, TreeItem[] tis, 
 		                        shared(FeedInfo)[] fis, ArticleTable table, 
 		                        Image[] images)
@@ -492,9 +491,87 @@ class MainWindow : AdjustableComponent
 					   }
 					}
 				});
+=======
+	static void updateTreeItem(MainWindow self, TreeItem ti, shared(FeedInfo) fi, ArticleTable table, AnimationTimer at)
+	{
+		// signal working in background
+		self.getDisplay().syncExec(new class Runnable
+					  {
+						  public override void run()
+						  {
+                              if (!at.isRunning())
+                              {
+							    at.run();
+                              }
+						  }
+					  });
+
+		// stop the animation once this function has been terminated.
+		scope (exit)
+		{
+            if (!self.getDisplay().isDisposed())
+            {
+			    self.getDisplay().asyncExec(new class Runnable
+						       {
+							       public override void run()
+							       {
+								       at.remove(ti);
+                                       if (!table.isDisposed() && table.getDisplayedFeed() == fi)
+								       {
+									       table.refresh();
+								       }
+							       }
+						       });
+            }
+		}
+
+		auto fi2 = getFeedInfo(fi.getURL());
+		size_t newArticlesCount = fi.add(fi2.getArticles());
+
+	}
+
+	static void removeOldFeedsInItem(MainWindow self, TreeItem ti, shared(FeedInfo) fi, time_t threshold, ArticleTable table, AnimationTimer at)
+	{
+		if (ti is null || ti.isDisposed())
+		{
+			return;
+		}
+
+		auto disp = ti.getDisplay();
+		if (disp is null || disp.isDisposed())
+		{
+			return;
+		}
+
+		// signal working in background
+		disp.syncExec(new class Runnable
+					  {
+						  public override void run()
+						  {
+							  if (!at.isRunning)
+								  at.run();
+						  }
+					  });
+
+		// stop the animation once this function has been terminated.
+		scope (exit)
+		{
+			disp.asyncExec(new class Runnable
+						   {
+							   public override void run()
+							   {
+								   at.remove(ti);
+								   if (table.getDisplayedFeed() == fi)
+								   {
+									   table.refresh();
+								   }
+							   }
+						   });
+>>>>>>> Introduced AnimationTimer
 		}
 	}
 
+<<<<<<< HEAD
 	static void removeOldFeedsInItems(MainWindow self, TreeItem[] tis, 
 	                                   shared(FeedInfo)[] fis, 
 	                                   time_t threshold, ArticleTable table,
@@ -565,6 +642,34 @@ class MainWindow : AdjustableComponent
 					// start animation
 					at = new AnimationTimer(self, tis, images);
 					at.run();
+=======
+	static void removeHistoryInItem(MainWindow self, TreeItem ti,  shared(FeedInfo) fi, FeedTree tree, ArticleTable table, AnimationTimer at)
+	{
+		// signal working in background
+		self.getDisplay().syncExec(new class Runnable
+					  {
+						  public override void run()
+						  {
+							  if (!at.isRunning)
+								  at.run();
+						  }
+					  });
+
+		auto fi2 = getFeedInfo(fi.getURL());
+
+		// stop the animation once this function has been terminated.
+		self.getDisplay().asyncExec(
+			new class Runnable
+			{
+				public override void run()
+				{
+					tree.setFeedInfo(ti, fi2);
+					at.remove(ti);
+					if (table.getDisplayedFeed() == fi)
+					{
+						table.refresh();
+					}
+>>>>>>> Introduced AnimationTimer
 				}
 			});
 
@@ -737,10 +842,15 @@ public:
 			return;
 		}
 
+<<<<<<< HEAD
 		auto updateTask = task!updateTreeItems(this, singleArray(targetItem), 
 			                                  singleArray(feedInfo), 
 			                                  m_tblArticles, 
 			                                  m_resMan.getImageMap16());
+=======
+		auto at = new AnimationTimer(this, singleArray(targetItem), m_resMan.getImageMap16());
+		auto updateTask = task!updateTreeItem(this, targetItem, feedInfo, m_tblArticles, at);
+>>>>>>> Introduced AnimationTimer
 		updateTask.executeInNewThread();
 	}
 
@@ -752,10 +862,20 @@ public:
 	{
 		TreeItem[] items = m_treeFeeds.getFeedItems();
 		shared(FeedInfo)[] fis = m_treeFeeds.getFeedInfo(items);
+<<<<<<< HEAD
 		
 		auto updateTask = task!updateTreeItems(this, items, fis, m_tblArticles, 
 											   m_resMan.getImageMap16());
 		updateTask.executeInNewThread();
+=======
+		auto at = new AnimationTimer(this, items, m_resMan.getImageMap16());
+
+		foreach (i; 0..items.length)
+		{
+			auto updateTask = task!updateTreeItem(this, items[i], fis[i], m_tblArticles, at);
+			updateTask.executeInNewThread();
+		}
+>>>>>>> Introduced AnimationTimer
 	}
 	
 	/**
@@ -770,18 +890,30 @@ public:
 		{
 			TreeItem[] items = m_treeFeeds.getFeedItems();
 			shared(FeedInfo)[] fis = m_treeFeeds.getFeedInfo(items);
+<<<<<<< HEAD
+=======
+			auto at = new AnimationTimer(this, items, m_resMan.getImageMap16());
+>>>>>>> Introduced AnimationTimer
 
 			// convert days to date before now
 			auto secsInOneDay = 60 * 60 * 24;
 			time_t t_now = time(null);
 			time_t threshold = t_now - (choice * secsInOneDay);
 
+<<<<<<< HEAD
 			// start work in another thread
             auto removeTask = task!removeOldFeedsInItems(this, items, fis, 
                                                          threshold, 
                                                          m_tblArticles, 
                                                       m_resMan.getImageMap16());
             removeTask.executeInNewThread();
+=======
+			foreach (i; 0..items.length)
+			{
+				auto removeTask = task!removeOldFeedsInItem(this, items[i], fis[i], threshold, m_tblArticles, at);
+				removeTask.executeInNewThread();
+			}
+>>>>>>> Introduced AnimationTimer
 		}
 	}
 
@@ -790,11 +922,21 @@ public:
 	{
 		TreeItem[] items = m_treeFeeds.getFeedItems();
 		shared(FeedInfo)[] fis = m_treeFeeds.getFeedInfo(items);
+<<<<<<< HEAD
 		
 		auto removeTask = task!removeHistoryInItems(this, items, fis, m_treeFeeds, 
 		                                       m_tblArticles, 
 		                                       m_resMan.getImageMap16());
 		removeTask.executeInNewThread();
+=======
+		auto ath = new AnimationTimer(this, items, m_resMan.getImageMap16());
+
+		foreach (i; 0..items.length)
+		{
+			auto removeTask = task!removeHistoryInItem(this, items[i], fis[i], m_treeFeeds, m_tblArticles, ath);
+			removeTask.executeInNewThread();
+		}
+>>>>>>> Introduced AnimationTimer
 	}
 
 	/**

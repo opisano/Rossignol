@@ -31,6 +31,7 @@ import std.path;
 import std.range;
 import std.regex;
 import std.stdio;
+import std.string;
 
 import std.net.curl;
 
@@ -951,10 +952,34 @@ public:
 		m_treeFeeds.setSelection(feedItem);
 		feedItem.setImage(m_imgFeedDefault);
 
-		if (!fi.getIcon().empty)
+        string iconUrl = fi.getIcon();
+		if (!iconUrl.empty)
 		{
+            // if relative url, translate to absolute URL
+            if (iconUrl.startsWith('/'))
+            {
+                // extract site root from link
+                string base = fi.getLink();
+                if (base.startsWith("http://"))
+                {
+                    base = base[7..$];
+                }
+                else if (base.startsWith("https://"))
+                {
+                    base = base[8..$];
+                }
+
+                auto index = std.string.indexOf(base, '/');
+                if (index != -1)
+                {
+                    base = base[0..index];
+                }
+
+                iconUrl = base ~ iconUrl;
+            }
+
 			auto path = treePath(feedItem);
-			auto th = new UpdateFeedIconThread(fi.getIcon(), path, m_treeFeeds);
+			auto th = new UpdateFeedIconThread(iconUrl, path, m_treeFeeds);
 			th.start();
 		}
 	}
