@@ -22,106 +22,94 @@ module gui.animation;
 import core.atomic;
 import core.thread;
 import core.time;
+
 import java.lang.Runnable;
 import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.widgets.TreeItem;
 
-/**
- * This class provides a way of displaying an animation on one 
- * or several widgets. 
- */
-class MultiAnimationThread(Widget) : Thread
+import gui.mainwindow;
+
+class AnimationTimer : Runnable
 {
+	// Reference to our main window
+	MainWindow          m_mainWindow;	
 	/// Animation images 
 	Image[]				m_images;
-	/// Stores widget original images (before the animation)
-	Image[Widget]		m_targetImages;
-	// Set of widgets to display the animation on.
-	Widget[Widget]	    m_targets;
-	// Delay between each animation frame
-	immutable Duration	m_delay;
-	// loop flag (for terminating the thread)
-	shared bool			m_active;
+	// The widgets to display animation image on.
+	TreeItem[TreeItem]    m_controls;
+    /// Stores widget original images (before the animation)
+	Image[TreeItem]		m_targetImages;
+	
+	int m_index;
 
-	void run()
-	{
-		// image index 
-		shared size_t index;
-		while (atomicLoad(m_active) == true)
-		{
-			auto disp = m_targets.byValue().front.getDisplay();
-            if (disp.isDisposed())
-                return;
-
-			// update widget image in the gui thread
-			disp.asyncExec(new class Runnable
-				{
-					override public void run()
-					{
-						foreach (target; m_targets)
-						{
-							if (!target.isDisposed())
-							{
-								target.setImage(m_images[index]);
-							}
-						}
-					}
-				});
-
-
-				// increase image index 
-				auto nextIndex = atomicLoad(index);
-				nextIndex = ++nextIndex % m_images.length;
-				if (nextIndex == 0)
-					nextIndex++;
-				atomicStore(index, nextIndex);
-
-				Thread.sleep(m_delay);
-		}		
-	}
-
+    bool m_running;
+	
 public:
-
-	/**
-	 * Creates an AnimationThread object. 
-	 * params:
-	 * widgets=widgets to display animation on.
-	 * duration=period between each animation frame.
-	 * images=animation frames.
-	 */
-	this(Widget[] widgets, Duration duration, Image[] images)
+	this(MainWindow mainWindow, TreeItem[] controls, Image[] images)
 	{
-		super(&run);
-
-		foreach (w; widgets)
+		m_mainWindow = mainWindow;
+		foreach (c; controls)
 		{
-			m_targets[w] = w;
-			m_targetImages[w] = w.getImage();
+			m_controls[c] = c;
+            m_targetImages[c] = c.getImage();
 		}
-
-		m_delay = duration;
+		m_index = 1;
 		m_images = images;
-		atomicStore(m_active, true);
 	}
+	
+	override void run()
+	{
+        m_running = true;
 
+		// Display animation images on all of our widgets.
+		foreach (ctrl; m_controls)
+		{
+			if (!ctrl.isDisposed())
+			{
+				ctrl.setImage(m_images[m_index]);
+			}
+		}
+		
+		m_index = (m_index + 1) % m_images.length;
+		if (m_index == 0)
+		{
+			++m_index;
+		}
+			
+		// schedule next timer iteration
+        if (!m_mainWindow.isDisposed())
+        {
+		    m_mainWindow.getDisplay().timerExec(50, this);
+        }
+	}
+	
 	/**
 	 * Removes a widget from the set and restores its original 
 	 * image (if any), ending its animation.
+	 * 
+	 * This method must be called from the GUI thread.
 	 */
-	void remove(Widget w)
+	void remove(TreeItem w)
 	{
-		if (w !in m_targets || w !in m_targetImages || w.isDisposed())
+		if (w is null || w !in m_controls || w.isDisposed())
 			return;
 
 		// restore original target image in the gui thread
-		m_targets[w].setImage(m_targetImages[w]);
-		m_targets.remove(w);
-		m_targetImages.remove(w);
+		m_controls[w].setImage(m_targetImages[w]);
+		m_controls.remove(w);
 
 		// if there is no more targets, end the animation 
 		// thread. 
-		if (m_targets.length == 0)
+		if (m_controls.length == 0)
 		{
-			atomicStore(m_active, false);
+			// schedule next timer iteration
+			m_mainWindow.getDisplay().timerExec(-1, this);
+            m_running = false;
 		}
 	}
+
+    bool isRunning() const
+    {
+        return m_running;
+    }
 }

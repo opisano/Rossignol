@@ -33,6 +33,7 @@ import core.sys.posix.sys.types;
 import core.sys.posix.sys.un;
 
 import std.algorithm;
+import std.array;
 import std.conv;
 import std.path;
 import std.string;
@@ -359,7 +360,7 @@ string getUserLanguage()
 	// remove any '.UTF-8' at the end of lang
 	auto lang = to!string(szLang);
 	auto r = findSplitBefore(lang, ".UTF-8");
-	return r[0];
+	return r[0].replace("_", "-");
 }
     
 }
