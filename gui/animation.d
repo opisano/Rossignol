@@ -22,8 +22,81 @@ module gui.animation;
 import core.atomic;
 import core.thread;
 import core.time;
+
 import java.lang.Runnable;
 import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.widgets.TreeItem;
+
+import gui.mainwindow;
+
+class AnimationTimer : Runnable
+{
+	// Reference to our main window
+	MainWindow          m_mainWindow;	
+	/// Animation images 
+	Image[]				m_images;
+	// The widgets to display animation image on.
+	TreeItem[TreeItem]    m_controls;
+	
+	int m_index;
+	
+public:
+	this(MainWindow mainWindow, TreeItem[] controls, Image[] images)
+	{
+		m_mainWindow = mainWindow;
+		foreach (c; controls)
+		{
+			m_controls[c] = c;
+		}
+		m_index = 1;
+		m_images = images;
+	}
+	
+	override void run()
+	{
+		// Display animation images on all of our widgets.
+		foreach (ctrl; m_controls)
+		{
+			if (!ctrl.isDisposed())
+			{
+				ctrl.setImage(m_images[m_index]);
+			}
+		}
+		
+		m_index = (m_index + 1) % m_images.length;
+		if (m_index == 0)
+		{
+			++m_index;
+		}
+			
+		// schedule next timer iteration
+		m_mainWindow.getDisplay().timerExec(50, this);
+	}
+	
+	/**
+	 * Removes a widget from the set and restores its original 
+	 * image (if any), ending its animation.
+	 * 
+	 * This method must be called from the GUI thread.
+	 */
+	void remove(TreeItem w)
+	{
+		if (w is null || w !in m_controls || w.isDisposed())
+			return;
+
+		// restore original target image in the gui thread
+		m_controls[w].setImage(m_mainWindow.getResourceManager().getImage("feed"));
+		m_controls.remove(w);
+
+		// if there is no more targets, end the animation 
+		// thread. 
+		if (m_controls.length == 0)
+		{
+			// schedule next timer iteration
+			m_mainWindow.getDisplay().timerExec(-1, this);
+		}
+	}
+}
 
 /**
  * This class provides a way of displaying an animation on one 
