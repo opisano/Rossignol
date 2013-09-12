@@ -26,7 +26,6 @@ import std.file;
 import std.net.curl;
 import std.parallelism;
 import std.path;
-import std.range;
 import std.stdio;
 import std.string;
 
@@ -445,53 +444,6 @@ class MainWindow : AdjustableComponent
 	}
 
 
-<<<<<<< HEAD
-	static void updateTreeItems(MainWindow self, TreeItem[] tis, 
-		                        shared(FeedInfo)[] fis, ArticleTable table, 
-		                        Image[] images)
-	in 
-	{
-		assert (tis !is null);
-		assert (fis !is null);
-		assert (tis.length > 0);
-		assert (tis.length == fis.length);
-		assert (table !is null);
-		assert (images !is null);
-	}
-	body
-	{
-	    // create the animation timer (in the GUI thread)
-		AnimationTimer at;
-		self.getDisplay().syncExec(new class Runnable
-			{
-				public override void run()
-				{
-					// start animation
-					at = new AnimationTimer(self, tis, images);
-					at.run();
-				}
-			});
-		
-		foreach (i; taskPool.parallel(iota(fis.length)))
-		{
-			// get new data
-			auto fi2 = getFeedInfo(fis[i].getURL());
-			size_t newArticlesCount = fis[i].add(fi2.getArticles());
-			
-			// update GUI
-			self.getDisplay().asyncExec(new class Runnable
-				{
-					public override void run()
-					{
-						at.remove(tis[i]);
-						if (!table.isDisposed() 
-							&& table.getDisplayedFeed() == fis[i])
-					   {
-						   table.refresh();
-					   }
-					}
-				});
-=======
 	static void updateTreeItem(MainWindow self, TreeItem ti, shared(FeedInfo) fi, ArticleTable table, AnimationTimer at)
 	{
 		// signal working in background
@@ -567,82 +519,11 @@ class MainWindow : AdjustableComponent
 								   }
 							   }
 						   });
->>>>>>> Introduced AnimationTimer
 		}
+
+		fi.removeOldArticles(threshold);
 	}
 
-<<<<<<< HEAD
-	static void removeOldFeedsInItems(MainWindow self, TreeItem[] tis, 
-	                                   shared(FeedInfo)[] fis, 
-	                                   time_t threshold, ArticleTable table,
-	                                   Image[] images)
-	in
-	{
-	    assert (tis !is null);
-		assert (fis !is null);
-		assert (tis.length > 0);
-		assert (tis.length == fis.length);
-		assert (table !is null);
-		assert (images !is null);
-	}
-	body
-	{
-	    // create the animation timer (in the GUI thread)
-		AnimationTimer at;
-		self.getDisplay().syncExec(new class Runnable
-			{
-				public override void run()
-				{
-					// start animation
-					at = new AnimationTimer(self, tis, images);
-					at.run();
-				}
-			});
-		
-		foreach (i; taskPool.parallel(iota(fis.length)))
-		{
-			fis[i].removeOldArticles(threshold);
-			
-			// update GUI
-			self.getDisplay().asyncExec(new class Runnable
-				{
-					public override void run()
-					{
-						at.remove(tis[i]);
-						if (!table.isDisposed() 
-							&& table.getDisplayedFeed() == fis[i])
-					   {
-						   table.refresh();
-					   }
-					}
-				});
-		}
-	}
-
-	static void removeHistoryInItems(MainWindow self, TreeItem[] tis,  
-	                                 shared(FeedInfo)[] fis, FeedTree tree, 
-	                                 ArticleTable table, Image[] images)
-	in
-	{
-	    assert (tis !is null);
-		assert (fis !is null);
-		assert (tis.length > 0);
-		assert (tis.length == fis.length);
-		assert (table !is null);
-		assert (images !is null);
-	}
-	body
-	{
-	    // create the animation timer (in the GUI thread)
-		AnimationTimer at;
-		self.getDisplay().syncExec(new class Runnable
-			{
-				public override void run()
-				{
-					// start animation
-					at = new AnimationTimer(self, tis, images);
-					at.run();
-=======
 	static void removeHistoryInItem(MainWindow self, TreeItem ti,  shared(FeedInfo) fi, FeedTree tree, ArticleTable table, AnimationTimer at)
 	{
 		// signal working in background
@@ -669,27 +550,9 @@ class MainWindow : AdjustableComponent
 					{
 						table.refresh();
 					}
->>>>>>> Introduced AnimationTimer
 				}
 			});
 
-		foreach (i; taskPool.parallel(iota(fis.length)))
-		{
-		    auto fi2 = getFeedInfo(fis[i].getURL());
-		    // update GUI
-		    self.getDisplay().asyncExec(new class Runnable
-		        {
-		            public override void run()
-		            {
-		                tree.setFeedInfo(tis[i], fi2);
-		                at.remove(tis[i]);
-		                if (table.getDisplayedFeed() == fis[i])
-		                {
-		                    table.refresh();
-		                }
-		            }
-		        });
-		}
 	}
 
     /**
@@ -825,9 +688,6 @@ public:
 		m_tblArticles.setFeedInfo(feedInfo);
 	}
 
-	/**
-	 * GUI action for refreshing one feed.
-	 */
 	@Action
 	void refreshItemAction(TreeItem targetItem)
 	{
@@ -842,32 +702,16 @@ public:
 			return;
 		}
 
-<<<<<<< HEAD
-		auto updateTask = task!updateTreeItems(this, singleArray(targetItem), 
-			                                  singleArray(feedInfo), 
-			                                  m_tblArticles, 
-			                                  m_resMan.getImageMap16());
-=======
 		auto at = new AnimationTimer(this, singleArray(targetItem), m_resMan.getImageMap16());
 		auto updateTask = task!updateTreeItem(this, targetItem, feedInfo, m_tblArticles, at);
->>>>>>> Introduced AnimationTimer
 		updateTask.executeInNewThread();
 	}
 
-	/**
-	 * GUI action for refreshing all the feeds.
-	 */
 	@Action
 	void refreshAllItemsAction()
 	{
 		TreeItem[] items = m_treeFeeds.getFeedItems();
 		shared(FeedInfo)[] fis = m_treeFeeds.getFeedInfo(items);
-<<<<<<< HEAD
-		
-		auto updateTask = task!updateTreeItems(this, items, fis, m_tblArticles, 
-											   m_resMan.getImageMap16());
-		updateTask.executeInNewThread();
-=======
 		auto at = new AnimationTimer(this, items, m_resMan.getImageMap16());
 
 		foreach (i; 0..items.length)
@@ -875,45 +719,28 @@ public:
 			auto updateTask = task!updateTreeItem(this, items[i], fis[i], m_tblArticles, at);
 			updateTask.executeInNewThread();
 		}
->>>>>>> Introduced AnimationTimer
 	}
-	
-	/**
-	 * GUI action for removing old articles.
-	 */
+
 	@Action
 	void removeOldArticlesAction()
 	{
 		auto dlg = new RemoveOldArticlesDialog(this, 0);
 		int choice = dlg.open();
-		if (choice != -1) // choice is a number of days
+		if (choice != -1)
 		{
 			TreeItem[] items = m_treeFeeds.getFeedItems();
 			shared(FeedInfo)[] fis = m_treeFeeds.getFeedInfo(items);
-<<<<<<< HEAD
-=======
 			auto at = new AnimationTimer(this, items, m_resMan.getImageMap16());
->>>>>>> Introduced AnimationTimer
 
-			// convert days to date before now
 			auto secsInOneDay = 60 * 60 * 24;
 			time_t t_now = time(null);
 			time_t threshold = t_now - (choice * secsInOneDay);
 
-<<<<<<< HEAD
-			// start work in another thread
-            auto removeTask = task!removeOldFeedsInItems(this, items, fis, 
-                                                         threshold, 
-                                                         m_tblArticles, 
-                                                      m_resMan.getImageMap16());
-            removeTask.executeInNewThread();
-=======
 			foreach (i; 0..items.length)
 			{
 				auto removeTask = task!removeOldFeedsInItem(this, items[i], fis[i], threshold, m_tblArticles, at);
 				removeTask.executeInNewThread();
 			}
->>>>>>> Introduced AnimationTimer
 		}
 	}
 
@@ -922,13 +749,6 @@ public:
 	{
 		TreeItem[] items = m_treeFeeds.getFeedItems();
 		shared(FeedInfo)[] fis = m_treeFeeds.getFeedInfo(items);
-<<<<<<< HEAD
-		
-		auto removeTask = task!removeHistoryInItems(this, items, fis, m_treeFeeds, 
-		                                       m_tblArticles, 
-		                                       m_resMan.getImageMap16());
-		removeTask.executeInNewThread();
-=======
 		auto ath = new AnimationTimer(this, items, m_resMan.getImageMap16());
 
 		foreach (i; 0..items.length)
@@ -936,7 +756,6 @@ public:
 			auto removeTask = task!removeHistoryInItem(this, items[i], fis[i], m_treeFeeds, m_tblArticles, ath);
 			removeTask.executeInNewThread();
 		}
->>>>>>> Introduced AnimationTimer
 	}
 
 	/**
