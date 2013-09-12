@@ -186,7 +186,7 @@ public:
         lblImage.setImage(m_image);
         
         auto lblPrompt = new Label(m_dialog, 0);
-        lblPrompt.setText("Rossignol version 0.2");
+        lblPrompt.setText("Rossignol version 0.3");
 
         auto txtLicense = new Text(m_dialog, SWT.BORDER | SWT.MULTI  | SWT.V_SCROLL | SWT.H_SCROLL);
         auto gridData = new GridData(GridData.FILL_BOTH);

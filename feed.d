@@ -280,9 +280,12 @@ public:
     /**
      * Serializes A feed as XML.
      */
-	string toXML() const
+	string toXML(string name = null) const
 	{
-		auto buffer = appender!string(format("<feed name=\"%s\" url=\"%s\" link=\"%s\" ", xml.parser.Parser.encodeEntities(m_name), m_url, m_link));
+		auto buffer = appender!string(format("<feed name=\"%s\" url=\"%s\" link=\"%s\" ", 
+                                             name is null ? xml.parser.Parser.encodeEntities(m_name) : name, 
+                                             m_url, 
+                                             m_link));
 		if (!m_icon.empty)
 		{
 			buffer ~= format("icon=\"%s\"", m_icon);
@@ -377,6 +380,22 @@ shared(FeedInfo)[] loadFeedsFromXML(string filename)
 
 	return result;
 }
+
+
+/+
+FeedInfo[] searchFeedsForTitle(shared(FeedInfo)[] feeds, string text)
+{
+    bool match(Article, text) pure const nothrow
+    {
+
+    }
+
+    foreach (feed; taskPool.parallel(feeds))
+    {
+        bool 
+    }
+}+/
+
 
 /**
  * Abstract Base class for Feed parsing strategy.

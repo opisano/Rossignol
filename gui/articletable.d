@@ -173,6 +173,8 @@ final class ArticleTable : AdjustableComponent
     // Right click menu
     Menu                    m_popupMenu;
 
+    string                  m_dateFormat;
+
 	/**
 	 * Provides a callback for displaying an item 
 	 */
@@ -193,7 +195,7 @@ final class ArticleTable : AdjustableComponent
 				{
 					const tm* utcTime = gmtime(&t);
 					char[50] buffer;
-					auto size = strftime(buffer.ptr, buffer.length, "%d/%m/%Y %T", utcTime);
+					auto size = strftime(buffer.ptr, buffer.length, m_dateFormat.ptr, utcTime);
 					item.setText(2, to!string(buffer[0..size]));
 				}
 			}
@@ -378,7 +380,7 @@ final class ArticleTable : AdjustableComponent
         }
 
         MenuItem mnuOpenURL = new MenuItem(m_popupMenu, 0);
-        mnuOpenURL.setText("Open article URL");
+        mnuOpenURL.setText(m_mainWindow.getResourceManager().getText("OPEN_ARTICLE_URL"));
         mnuOpenURL.addSelectionListener(
             new class SelectionAdapter
             {
@@ -391,7 +393,7 @@ final class ArticleTable : AdjustableComponent
         if (!article.getEnclosure().strip().empty)
         {
             MenuItem mnuEnclosure = new MenuItem(m_popupMenu, 0);
-            mnuEnclosure.setText("Open attachment");
+            mnuEnclosure.setText(m_mainWindow.getResourceManager().getText("OPEN_ATTACHMENT"));
             mnuEnclosure.addSelectionListener(
                 new class SelectionAdapter
                 {
@@ -427,6 +429,8 @@ public:
 		m_tblArticles.setHeaderVisible(true);
 		m_tblArticles.setLinesVisible(true);
 
+        m_dateFormat = mainWindow.getResourceManager().getText("DATE_FORMAT");
+
 		// On double click on a line, display the article in the user browser.
 		m_tblArticles.addMouseListener(
 			new class MouseAdapter
@@ -449,6 +453,10 @@ public:
                         // get TreeItem at position (e.x, e.y) and select it
 						Point relativePt = new Point(e.x, e.y);
 						auto item = m_tblArticles.getItem(relativePt);
+                        if (item is null)
+                        {
+                            return;
+                        }
                         auto article = cast(Article)item.getData();
                         populatePopupMenu(article);
 
