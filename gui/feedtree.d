@@ -1,18 +1,18 @@
 /*
 This file is part of Rossignol.
 
-Foobar is free software: you can redistribute it and/or modify
+Rossignol is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-Foobar is distributed in the hope that it will be useful,
+Rossignol is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+along with Rossignol.  If not, see <http://www.gnu.org/licenses/>.
 
 Copyright 2013 Olivier Pisano
 */
@@ -348,7 +348,7 @@ class FeedTree
 		{
 			// Add remove menu
 			MenuItem mnuRemove = new MenuItem(m_popupMenu, 0);
-			mnuRemove.setText("Remove");
+            mnuRemove.setText(m_mainWindow.getResourceManager().getText("REMOVE"));
 			mnuRemove.addSelectionListener(new class SelectionAdapter
 				{
 					override public void widgetSelected(SelectionEvent e)
@@ -387,7 +387,7 @@ class FeedTree
 			{
                 // Add rename menu
                 MenuItem mnuRename = new MenuItem(m_popupMenu, 0);
-                mnuRename.setText("Rename");
+                mnuRename.setText(m_mainWindow.getResourceManager().getText("RENAME"));
                 mnuRename.addSelectionListener(
                     new class SelectionAdapter
                     {
@@ -503,8 +503,8 @@ public:
 		m_editor.horizontalAlignment = SWT.LEFT;
 		m_editor.grabHorizontal = true;
 
-		m_imgOpenGroup = new Image(m_treeFeeds.getDisplay(), "img/16x16/folder-open.png");
-		m_imgClosedGroup = new Image(m_treeFeeds.getDisplay(), "img/16x16/folder.png");
+		m_imgOpenGroup = mainWindow.getResourceManager().getImage("folderopen");
+		m_imgClosedGroup = mainWindow.getResourceManager().getImage("folderclosed");
 		m_imgFeedDefault = mainWindow.getResourceManager().getImage("feed");
 		m_groupNodeData = new GroupNodeData(false);
 

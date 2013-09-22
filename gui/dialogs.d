@@ -1,18 +1,18 @@
 /*
 This file is part of Rossignol.
 
-Foobar is free software: you can redistribute it and/or modify
+Rossignol is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-Foobar is distributed in the hope that it will be useful,
+Rossignol is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+along with Rossignol.  If not, see <http://www.gnu.org/licenses/>.
 
 Copyright 2013 Olivier Pisano
 */
@@ -21,6 +21,7 @@ module gui.dialogs;
 
 import std.conv;
 import std.datetime;
+import std.string;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -160,14 +161,16 @@ public:
  */
 final class AboutDialog : Dialog
 {
-	Shell m_dialog;
+	MainWindow m_mainWindow;
+    Shell m_dialog;
     Image m_image;
     enum license = import("license.txt");
 
 public:
-	this(Shell parent, Image image, int style)
+	this(MainWindow mainWindow, Image image, int style)
 	{
-		super(parent, style);
+		super(mainWindow.m_shell, style);
+        m_mainWindow = mainWindow;
         m_image = image;
 	}
 
@@ -176,10 +179,10 @@ public:
         auto parent = getParent();
 
         // create dialog window
-		m_dialog    = new Shell(parent, SWT.PRIMARY_MODAL | SWT.DIALOG_TRIM | SWT.DOUBLE_BUFFERED );
+		m_dialog    = new Shell(m_mainWindow, SWT.PRIMARY_MODAL | SWT.DIALOG_TRIM | SWT.DOUBLE_BUFFERED );
         m_dialog.setBackgroundMode(SWT.INHERIT_FORCE);
 		m_dialog.setLayout(new GridLayout(2, false));
-		m_dialog.setText("About Rossignol");
+		m_dialog.setText(m_mainWindow.getResourceManager().getText("ABOUT_ROSSIGNOL"));
         m_dialog.setSize(512, 384);
 
         auto lblImage = new Label(m_dialog, 0);
@@ -243,10 +246,10 @@ public:
 		gl.marginWidth = 10;
 		m_dialog.setLayout(gl);
 		
-		m_dialog.setText("Remove old articles...");
+		m_dialog.setText(m_mainWindow.getResourceManager().getText("HISTORY_REMOVE_OLD_ARTICLES"));
 
 		auto lblPrompt = new Label(m_dialog, SWT.NONE);
-		lblPrompt.setText("Remove articles older than:");
+		lblPrompt.setText(m_mainWindow.getResourceManager().getText("REMOVE_ARTICLES_OLDER_THAN"));
 		GridData gridData = new GridData();
 		gridData.horizontalAlignment = GridData.FILL;
 		gridData.horizontalSpan = 2;
@@ -256,14 +259,14 @@ public:
 		spnQty.setMinimum(1);
 		spnQty.setSelection(30);
 		auto cmbUnit = new Combo(m_dialog, SWT.DROP_DOWN | SWT.READ_ONLY | SWT.BORDER);
-		cmbUnit.add("day(s)");
-		cmbUnit.add("month(s)");
-		cmbUnit.add("year(s)");
+		cmbUnit.add(m_mainWindow.getResourceManager().getText("DAYS"));
+		cmbUnit.add(m_mainWindow.getResourceManager().getText("MONTHS"));
+		cmbUnit.add(m_mainWindow.getResourceManager().getText("YEARS"));
 		cmbUnit.select(0);
 
 
 		auto btnOk = new Button(m_dialog, SWT.PUSH);
-		btnOk.setText("OK");
+		btnOk.setText(m_mainWindow.getResourceManager().getText("OK"));
 		btnOk.setBackground(m_dialog.getBackground());
 		btnOk.addSelectionListener(
 			new class SelectionAdapter
@@ -291,7 +294,7 @@ public:
 			});
 
 		auto btnCancel = new Button(m_dialog, SWT.PUSH);
-		btnCancel.setText("Cancel");
+		btnCancel.setText(m_mainWindow.getResourceManager().getText("CANCEL"));
 		btnCancel.setBackground(m_dialog.getBackground());
 		btnCancel.addSelectionListener(
 			new class SelectionAdapter
@@ -317,4 +320,62 @@ public:
 		return m_result;
 
 	}
+}
+
+final class SearchDialog : Dialog
+{
+    MainWindow m_mainWindow;
+	Shell m_dialog;
+	string m_result;
+
+public:
+    this(MainWindow mainWindow, int style)
+    {
+        super(mainWindow.m_shell, style);
+        m_mainWindow = mainWindow;
+    }
+
+    string open()
+    {
+        m_result = null;
+        m_dialog = new Shell(m_mainWindow.m_shell, SWT.PRIMARY_MODAL | SWT.DIALOG_TRIM | SWT.DOUBLE_BUFFERED );
+        m_dialog.setBackgroundMode(SWT.INHERIT_FORCE);
+        m_dialog.setText(m_mainWindow.getResourceManager().getText("SEARCH"));
+
+        auto gl = new GridLayout(3, false);
+		gl.marginWidth = 10;
+		m_dialog.setLayout(gl);
+
+        Label lblPrompt = new Label(m_dialog, SWT.NONE);
+        lblPrompt.setText(m_mainWindow.getResourceManager().getText("HISTORY_SEARCH"));
+        Text txtSearch = new Text(m_dialog, SWT.BORDER);
+
+        Button btnOK = new Button(m_dialog, SWT.PUSH);
+        btnOK.setText(m_mainWindow.getResourceManager().getText("OK"));
+        btnOK.addSelectionListener(
+            new class SelectionAdapter
+            {
+                public override void widgetSelected(SelectionEvent e)
+                {
+                    auto text = txtSearch.getText();
+                    if (text.strip().length > 0)
+                    {
+                        m_result = text;
+                        m_dialog.dispose();
+                    }
+                }
+            });
+
+        m_dialog.pack();
+        m_dialog.open();
+        auto display = getParent().getDisplay();
+		while (!m_dialog.isDisposed())
+		{
+			if (!display.readAndDispatch())
+			{
+				display.sleep();
+			}
+		}
+		return m_result;
+    }
 }

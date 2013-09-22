@@ -38,8 +38,10 @@ import std.datetime;
 import std.exception;
 import std.file;
 import std.net.curl;
+import std.parallelism;
 import std.regex;
 import std.string;
+import std.typecons;
 
 import std.c.time;
 
@@ -382,19 +384,47 @@ shared(FeedInfo)[] loadFeedsFromXML(string filename)
 }
 
 
-/+
-FeedInfo[] searchFeedsForTitle(shared(FeedInfo)[] feeds, string text)
+/**
+ * Returns a range of Article instances whose titles contain
+ * text (case insensitive).
+ */
+auto searchFeedTitles(const shared(FeedInfo)[] feeds, string text)
 {
-    bool match(Article, text) pure const nothrow
+    // check if text is in article title
+    bool match(Article article, string s) 
     {
-
+        return find(article.getTitle().toUpper(), s).empty == false;
     }
 
-    foreach (feed; taskPool.parallel(feeds))
+    // Create a temporary array containing all the feeds articles 
+    // (easier to parallelize)
+    size_t totalArticles;
+    foreach (feed; feeds)
     {
-        bool 
+        totalArticles+= feed.getArticles().length;
     }
-}+/
+    auto articlesApp = appender!(Rebindable!(Article)[])();
+    articlesApp.reserve(totalArticles);
+    foreach (feed; feeds)
+    {
+        auto arts = feed.getArticles();
+        foreach (article; arts)
+        {
+            articlesApp.put(rebindable(article));
+        }
+    }
+    auto articles = articlesApp.data();
+
+    // Search for articles, setting to null any non matching article
+    auto uppercaseText = text.toUpper();    
+    foreach (ref article; taskPool.parallel(articles))
+    {
+        article = match(article, uppercaseText) ? article : null;
+    }
+
+    // return non null articles
+    return filter!(a => a !is null)(articles);
+}
 
 
 /**

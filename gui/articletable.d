@@ -1,18 +1,18 @@
 /*
 This file is part of Rossignol.
 
-Foobar is free software: you can redistribute it and/or modify
+Rossignol is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-Foobar is distributed in the hope that it will be useful,
+Rossignol is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+along with Rossignol.  If not, see <http://www.gnu.org/licenses/>.
 
 Copyright 2013 Olivier Pisano
 */
@@ -151,14 +151,14 @@ private SortOrder switchOrder(SortOrder order)
 /**
  * Provides a way of displaying a list of articles, sorting them.
  */
-final class ArticleTable : AdjustableComponent
+abstract class ArticleTable : AdjustableComponent
 {
 	// The actual SWT widget.
 	Table					m_tblArticles;
 	// reference to the application main window
 	MainWindow				m_mainWindow;
 	// the feed from which we display the articles
-	shared FeedInfo			m_feedInfo;
+	//shared FeedInfo			m_feedInfo;
 	// a copy of the feed articles, for sorting
 	Rebindable!Article[]    m_articles;
 	// table columns
@@ -413,7 +413,7 @@ public:
 	{
 		m_mainWindow = mainWindow;
 		// create the SWT widget
-		m_tblArticles = new Table(parent, SWT.MULTI | SWT.FULL_SELECTION| SWT.BORDER | SWT.VIRTUAL);
+		m_tblArticles = new Table(parent, SWT.MULTI | SWT.FULL_SELECTION|  SWT.VIRTUAL);
         m_popupMenu = new Menu(m_tblArticles);
 		m_sortMode = SortMode.time;
 		m_sortOrder = SortOrder.descending;
@@ -487,53 +487,6 @@ public:
 		m_tblArticles.pack();
 	}
 
-	/**
-	 * Change the feed content displayed in the table.
-	 */
-	void setFeedInfo(shared FeedInfo feedInfo)
-	{
-		if (feedInfo !is m_feedInfo)
-		{
-			m_feedInfo = feedInfo;
-			int count = cast(int)m_feedInfo.getArticles().length;
-			m_articles = new Rebindable!Article[count];
-			foreach (index, article; m_feedInfo.getArticles())
-			{
-				m_articles[index] = article;
-			}
-			sortTable(m_sortMode);
-
-			m_tblArticles.setItemCount(count);
-			m_tblArticles.clear(0, count-1);
-		}
-	}
-
-	/**
-	 * Refresh the content of the feed displayed in the table. 
-	 * This method in called when a feed is refreshed and new articled have been found.
-	 */
-	void refresh()
-	{
-		int count = cast(int)m_feedInfo.getArticles().length;
-		m_articles = new Rebindable!Article[count];
-		foreach (index, article; m_feedInfo.getArticles())
-		{
-			m_articles[index] = article;
-		}
-		sortTable(m_sortMode);
-
-		m_tblArticles.setItemCount(count);
-		m_tblArticles.clear(0, count-1);
-	}
-
-	/**
-	 * Returns a reference to the feed currently displayed by this table.
-	 */
-	shared(FeedInfo) getDisplayedFeed()
-	{
-		return m_feedInfo;
-	}
-
 	void displayArticleInBrowser(TableItem item)
 	{
 		if (item is null)
@@ -576,4 +529,89 @@ public:
 	}
 
 	alias m_tblArticles this;
+}
+
+
+/**
+ * Table that displays the articles taken from a FeedInfo instance.
+ * The displayed FeedInfo can be changed by the setDisplayedFeed() method.
+ */
+final class FeedArticlesTable : ArticleTable
+{
+    shared(FeedInfo) m_feedInfo;
+
+public:
+
+    this(MainWindow mainWindow, Composite parent, int style)
+    {
+        super(mainWindow, parent, style);
+    }
+
+    /**
+    * Returns a reference to the feed currently displayed by this table.
+    */
+	shared(FeedInfo) getDisplayedFeed()
+	{
+		return m_feedInfo;
+	}
+
+    /**
+    * Change the feed content displayed in the table.
+    */
+	void setFeedInfo(shared FeedInfo feedInfo)
+	{
+		if (feedInfo !is m_feedInfo)
+		{
+			m_feedInfo = feedInfo;
+			int count = cast(int)m_feedInfo.getArticles().length;
+			m_articles = new Rebindable!Article[count];
+			foreach (index, article; m_feedInfo.getArticles())
+			{
+				m_articles[index] = article;
+			}
+			sortTable(m_sortMode);
+
+			m_tblArticles.setItemCount(count);
+			m_tblArticles.clear(0, count-1);
+		}
+	}
+
+    /**
+    * Refresh the content of the feed displayed in the table. 
+    * This method in called when a feed is refreshed and new articled have been found.
+    */
+	void refresh()
+	{
+		int count = cast(int)m_feedInfo.getArticles().length;
+		m_articles = new Rebindable!Article[count];
+		foreach (index, article; m_feedInfo.getArticles())
+		{
+			m_articles[index] = article;
+		}
+		sortTable(m_sortMode);
+
+		m_tblArticles.setItemCount(count);
+		m_tblArticles.clear(0, count-1);
+	}
+
+    alias m_tblArticles this;
+}
+
+final class ResultsArticleTable : ArticleTable
+{
+public:
+    this(MainWindow mainWindow, Composite parent, int style)
+    {
+        super(mainWindow, parent, style);
+    }
+
+    void setResults(R)(R results)
+    {
+        m_articles = results.array();
+        sortTable(m_sortMode);
+
+        m_tblArticles.setItemCount(m_articles.length);
+        m_tblArticles.clear(0, m_articles.length-1);        
+    }
+    alias m_tblArticles this;
 }

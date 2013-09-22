@@ -1,18 +1,18 @@
 /*
 This file is part of Rossignol.
 
-Foobar is free software: you can redistribute it and/or modify
+Rossignol is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-Foobar is distributed in the hope that it will be useful,
+Rossignol is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+along with Rossignol.  If not, see <http://www.gnu.org/licenses/>.
 
 Copyright 2013 Olivier Pisano
 */
@@ -44,6 +44,7 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
+import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeItem;
@@ -51,6 +52,9 @@ import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.custom.CTabFolder;
+import org.eclipse.swt.custom.CTabItem;
+import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.ToolBar;
 import org.eclipse.swt.widgets.ToolItem;
 
@@ -158,7 +162,9 @@ class MainWindow : AdjustableComponent
 	/// Feeds tree (on the left pane)
 	FeedTree     m_treeFeeds;
 	/// Articles table (on the right pane)
-	ArticleTable m_tblArticles;
+	FeedArticlesTable m_tblArticles;
+
+    CTabFolder    m_tbfArticles;
 
 	// Menu items
 	Menu		 m_fileMenu;
@@ -167,6 +173,7 @@ class MainWindow : AdjustableComponent
 	MenuItem     m_newGroup;
 	MenuItem     m_refreshAllFeeds;
 	MenuItem	 m_exitItem;
+    MenuItem     m_mnuSearch;
 	MenuItem     m_removeOldArticles;
 	MenuItem     m_removeHistory;
     Menu         m_helpMenu;
@@ -191,15 +198,15 @@ class MainWindow : AdjustableComponent
 	{
 		m_resMan.loadImage("img/16x16/document-new.png", "newfeed");
 		m_resMan.loadImage("img/16x16/folder-new.png", "newgroup");
-        m_resMan.loadImage("img/32x32/document-new.png", "newfeed32");
-		m_resMan.loadImage("img/32x32/folder-new.png", "newgroup32");
 		m_resMan.loadImage("img/rossignol.png", "appicon");
 		m_resMan.loadImage("img/16x16/view-refresh.png", "refresh");
-        m_resMan.loadImage("img/32x32/view-refresh.png", "refresh32");
 		m_resMan.loadImage("img/16x16/folder-open.png", "openFolder");
 		m_resMan.loadImage("img/16x16/folder.png", "closedFolder");
 		m_resMan.loadImage("img/16x16/feed.png", "feed");
         m_resMan.loadImage("img/16x16/mail-attachment.png", "attachment");
+        m_resMan.loadImage("img/16x16/folder-open.png", "folderopen");
+        m_resMan.loadImage("img/16x16/folder.png", "folderclosed");
+        m_resMan.loadImage("img/16x16/system-search.png", "magnifier");
 		m_resMan.loadImageMap16("img/16x16/process-working.png");
 	}
 
@@ -242,6 +249,9 @@ class MainWindow : AdjustableComponent
         cascadeHistoryMenu.setText(m_resMan.getText("HISTORY_MENU"));
 		m_historyMenu = new Menu(m_shell, SWT.DROP_DOWN);
 		cascadeHistoryMenu.setMenu(m_historyMenu);
+
+        m_mnuSearch = new MenuItem(m_historyMenu, SWT.PUSH);
+        m_mnuSearch.setText(m_resMan.getText("HISTORY_SEARCH"));
 
 		m_removeOldArticles = new MenuItem(m_historyMenu, SWT.PUSH);
         m_removeOldArticles.setText(m_resMan.getText("HISTORY_REMOVE_OLD_ARTICLES"));
@@ -298,6 +308,15 @@ class MainWindow : AdjustableComponent
 			});
 
 		// edit menu items
+        m_mnuSearch.addSelectionListener(
+            new class SelectionAdapter
+            {
+                override public void widgetSelected(SelectionEvent e)
+                {
+                    searchAction();
+                }
+            });
+
 		m_removeOldArticles.addSelectionListener(
 			new class SelectionAdapter
 			{
@@ -334,9 +353,15 @@ class MainWindow : AdjustableComponent
 	void createContent()
 	{
 		m_sashForm = new SashForm(m_shell, SWT.HORIZONTAL | SWT.SMOOTH);
-		m_treeFeeds = new FeedTree(this, m_sashForm, SWT.SINGLE | SWT.H_SCROLL | SWT.V_SCROLL);
+		m_treeFeeds = new FeedTree(this, m_sashForm, SWT.SINGLE | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
 		m_treeFeeds.loadFromFile();
-		m_tblArticles = new ArticleTable(this, m_sashForm, SWT.SINGLE | SWT.H_SCROLL | SWT.V_SCROLL);
+        m_tbfArticles = new CTabFolder(m_sashForm, SWT.TOP | SWT.BORDER | SWT.FLAT);
+        CTabItem item = new CTabItem(m_tbfArticles, SWT.NONE);
+		m_tblArticles = new FeedArticlesTable(this, m_tbfArticles, SWT.SINGLE | SWT.H_SCROLL | SWT.V_SCROLL);
+        item.setControl(m_tblArticles);
+        item.setText(m_resMan.getText("FEED_CONTENT"));
+        item.setShowClose(false);
+        m_tbfArticles.setSelection(0);
 		m_sashForm.setWeights([1, 4]);
 
         auto gridData = new GridData();
@@ -391,7 +416,8 @@ class MainWindow : AdjustableComponent
         m_toolbar = new ToolBar(m_shell, SWT.FLAT | SWT.WRAP | SWT.HORIZONTAL);
 
         m_tlbNewFeedItem = new ToolItem(m_toolbar, SWT.PUSH);
-        m_tlbNewFeedItem.setImage(m_resMan.getImage("newfeed32"));
+        m_tlbNewFeedItem.setImage(m_resMan.getImage("newfeed"));
+        m_tlbNewFeedItem.setToolTipText(m_resMan.getText("FILE_NEW_FEED"));
         m_tlbNewFeedItem.addSelectionListener(
             new class SelectionAdapter
             {
@@ -402,7 +428,8 @@ class MainWindow : AdjustableComponent
             });
 
         m_tlbNewGroup = new ToolItem(m_toolbar, SWT.PUSH);
-        m_tlbNewGroup.setImage(m_resMan.getImage("newgroup32"));
+        m_tlbNewGroup.setImage(m_resMan.getImage("newgroup"));
+        m_tlbNewGroup.setToolTipText(m_resMan.getText("FILE_NEW_GROUP"));
         m_tlbNewGroup.addSelectionListener(
             new class SelectionAdapter
             {
@@ -415,7 +442,8 @@ class MainWindow : AdjustableComponent
         new ToolItem(m_toolbar, SWT.SEPARATOR);
 
         m_tlbRefresh = new ToolItem(m_toolbar, SWT.PUSH);
-        m_tlbRefresh.setImage(m_resMan.getImage("refresh32"));
+        m_tlbRefresh.setImage(m_resMan.getImage("refresh"));
+        m_tlbRefresh.setToolTipText(m_resMan.getText("FILE_REFRESH_ALL_FEEDS"));
         m_tlbRefresh.addSelectionListener(
             new class SelectionAdapter
             {
@@ -424,7 +452,6 @@ class MainWindow : AdjustableComponent
                     refreshAllItemsAction();
                 }
             });
-        
 
         m_toolbar.pack();
     }
@@ -444,7 +471,7 @@ class MainWindow : AdjustableComponent
 	}
 
 
-	static void updateTreeItem(MainWindow self, TreeItem ti, shared(FeedInfo) fi, ArticleTable table, AnimationTimer at)
+	static void updateTreeItem(MainWindow self, TreeItem ti, shared(FeedInfo) fi, FeedArticlesTable table, AnimationTimer at)
 	{
 		// signal working in background
 		self.getDisplay().syncExec(new class Runnable
@@ -482,7 +509,7 @@ class MainWindow : AdjustableComponent
 
 	}
 
-	static void removeOldFeedsInItem(MainWindow self, TreeItem ti, shared(FeedInfo) fi, time_t threshold, ArticleTable table, AnimationTimer at)
+	static void removeOldFeedsInItem(MainWindow self, TreeItem ti, shared(FeedInfo) fi, time_t threshold, FeedArticlesTable table, AnimationTimer at)
 	{
 		if (ti is null || ti.isDisposed())
 		{
@@ -524,7 +551,7 @@ class MainWindow : AdjustableComponent
 		fi.removeOldArticles(threshold);
 	}
 
-	static void removeHistoryInItem(MainWindow self, TreeItem ti,  shared(FeedInfo) fi, FeedTree tree, ArticleTable table, AnimationTimer at)
+	static void removeHistoryInItem(MainWindow self, TreeItem ti,  shared(FeedInfo) fi, FeedTree tree, FeedArticlesTable table, AnimationTimer at)
 	{
 		// signal working in background
 		self.getDisplay().syncExec(new class Runnable
@@ -548,12 +575,41 @@ class MainWindow : AdjustableComponent
 					at.remove(ti);
 					if (table.getDisplayedFeed() == fi)
 					{
-						table.refresh();
+						table.setFeedInfo(fi2);
 					}
 				}
 			});
 
 	}
+
+    static void searchInArticlesTitles(MainWindow self, string text, shared(FeedInfo)[] fis, CTabFolder tbfArticles)
+    in
+    {
+        assert (self !is null);
+        assert (text !is null);
+        assert (fis  !is null);
+        assert (tbfArticles !is null);
+    }
+    body
+    {
+        // perform the actual search
+        auto results = feed.searchFeedTitles(fis, text);
+        auto disp = self.getDisplay();
+        disp.asyncExec(new class Runnable
+                       {
+                           void run()
+                           {
+                               auto item = new CTabItem(tbfArticles, SWT.NONE | SWT.CLOSE);
+                               item.setText("\"%s\"".format(text));
+                               item.setImage(self.getResourceManager().getImage("magnifier"));
+                               
+                               auto tblResults = new ResultsArticleTable(self, tbfArticles, SWT.SINGLE | SWT.H_SCROLL | SWT.V_SCROLL);
+                               tblResults.setResults(results);
+                               item.setControl(tblResults);
+                               tbfArticles.setSelection(item);
+                           }
+                       });
+    }
 
     /**
      * Save the GUI properties to a file.
@@ -625,7 +681,28 @@ public:
 		}
 	}
 
+    /**
+     * GUI action for searching 
+     */
+    @Action 
+    void searchAction()
+    {
+        auto dlg = new SearchDialog(this, 0);
+        string search = dlg.open();
 
+        if (search !is null)
+        {
+            TreeItem[] items = m_treeFeeds.getFeedItems();
+            shared(FeedInfo)[] fis = m_treeFeeds.getFeedInfo(items);
+
+            auto searchTask = task!searchInArticlesTitles(this, search, fis, m_tbfArticles);
+            searchTask.executeInNewThread();
+        }
+    }
+
+    /**
+     * GUI action for displaying about dialog box.
+     */
     @Action 
     void aboutAction()
     {
