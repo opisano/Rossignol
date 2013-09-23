@@ -647,6 +647,7 @@ public:
 		ptrdiff_t eqIndex			= -1;
 		ptrdiff_t startQuoteIndex	= -1;
 		ptrdiff_t endQuoteIndex		= -1;
+        dchar     quoteChar;
 		dchar     previousChar;
 
 		m_attr_array.clear();
@@ -703,6 +704,8 @@ public:
 			}
 			else // if we are processing attributes
 			{
+                
+
 				if ((startAttrIndex == -1) && c.isNameCharStart())
 				{
 					startAttrIndex = i;
@@ -711,27 +714,34 @@ public:
 				{
 					eqIndex = i;
 				}
-				else if (c =='"')
+				else if (quoteChar == dchar.init && startQuoteIndex == -1 && (c == '"' || c == '\''))
 				{
-					if (startQuoteIndex == -1)
-					{
-						startQuoteIndex = i;
-					}
-					else
-					{
-						endQuoteIndex = i;
-                        m_attr_array.put(decodeAttribute(text, startAttrIndex, eqIndex, startQuoteIndex, 
-                                                         endQuoteIndex,m_owner.m_line, m_owner.m_col));
-						startAttrIndex	= -1;
-						eqIndex			= -1;
-						startQuoteIndex = -1;
-						endQuoteIndex	= -1;
-					}
+                    startQuoteIndex = i;
+                    quoteChar = c;
+                }
+                else if (c == quoteChar && startQuoteIndex != -1 && quoteChar != dchar.init)
+                {
+					endQuoteIndex = i;
+                    m_attr_array.put(decodeAttribute(text, startAttrIndex, eqIndex, startQuoteIndex, 
+                                                        endQuoteIndex,m_owner.m_line, m_owner.m_col));
+                    // put things back in place for next argument
+					startAttrIndex	= -1;
+					eqIndex			= -1;
+					startQuoteIndex = -1;
+					endQuoteIndex	= -1;
+                    quoteChar       = dchar.init;
 				}
-				if (c == '>')
+				else if (c == '>')
 				{
 					if (m_owner.m_contentHandler !is null)
 					{
+                        auto m_i = i;
+                        auto m_startAttrIndex = startAttrIndex;
+                        auto m_eqIndex = eqIndex;
+                        auto m_startQuoteIndex = startQuoteIndex;
+                        auto m_endQuoteIndex = endQuoteIndex;
+                        auto m_text = text;
+
 						// check we have finished parsing an attribute
 						if (startAttrIndex != -1 || eqIndex != -1 || startQuoteIndex != -1
 								|| endQuoteIndex != -1)

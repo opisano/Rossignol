@@ -791,7 +791,10 @@ public:
 		
 
 		auto fi = new shared(FeedInfo)(name, url, link, articles.data());
-		fi.setIcon(m_currentFeed.icon);
+        if (m_currentFeed.icon !is null)
+        {
+		    fi.setIcon(m_currentFeed.icon);
+        }
 		m_owner.setFeedInfo(fi);
 	}
 
