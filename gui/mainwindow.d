@@ -184,6 +184,7 @@ class MainWindow : AdjustableComponent
     ToolItem     m_tlbNewFeedItem;
     ToolItem     m_tlbNewGroup;
     ToolItem     m_tlbRefresh;
+    ToolItem     m_tlbSearch;
 	
 	// Stores and manages the lifecycle of our GUI images.
 	ResourceManager m_resMan;
@@ -207,6 +208,7 @@ class MainWindow : AdjustableComponent
         m_resMan.loadImage("img/16x16/folder-open.png", "folderopen");
         m_resMan.loadImage("img/16x16/folder.png", "folderclosed");
         m_resMan.loadImage("img/16x16/system-search.png", "magnifier");
+        m_resMan.loadImage("img/16x16/edit-find.png", "search");
 		m_resMan.loadImageMap16("img/16x16/process-working.png");
 	}
 
@@ -450,6 +452,20 @@ class MainWindow : AdjustableComponent
                 override public void widgetSelected(SelectionEvent event)
                 {
                     refreshAllItemsAction();
+                }
+            });
+
+        new ToolItem(m_toolbar, SWT.SEPARATOR);
+
+        m_tlbSearch = new ToolItem(m_toolbar, SWT.PUSH);
+        m_tlbSearch.setImage(m_resMan.getImage("search"));
+        m_tlbSearch.setToolTipText(m_resMan.getText("HISTORY_SEARCH"));
+        m_tlbSearch.addSelectionListener(
+            new class SelectionAdapter
+            {
+                override public void widgetSelected(SelectionEvent event)
+                {
+                    searchAction();
                 }
             });
 

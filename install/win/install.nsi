@@ -37,18 +37,13 @@ Section "Rossignol (required)"
   
   ; Put file there
   File "install.nsi"
-  File /r "doc\*.pdf"
-  File "img\16x16\document-new.png"
-  File "img\16x16\feed.png"
-  File "img\16x16\folder.png"
-  File "img\16x16\folder-new.png"
-  File "img\16x16\folder-open.png"
-  File "img\16x16\process-working.png"
-  File "img\16x16\view-refresh.png"
-  File "img\rossignol.png"
+  File /r "doc"
+  File /r "img"
+  File /r "lang"
   File "libcurl.dll"
-  File "license.txt"
+  File "license.txt"                                                                       
   File "Rossignol.exe"
+  File "Rossignol.exe.manifest"
   File "zlib1.dll"
   
   ; Write the installation path into the registry
@@ -83,9 +78,16 @@ Section "Uninstall"
   DeleteRegKey HKLM SOFTWARE\Rossignol
 
   ; Remove files and uninstaller
-  Delete $INSTDIR\install.nsi
-  Delete $INSTDIR\uninstall.exe
-
+  Delete "$INSTDIR\doc\*.*"
+  RMDir "$INSTDIR\doc"
+  Delete "$INSTDIR\lang\*.*"
+  RMDir "$INSTDIR\lang"
+  Delete "$INSTDIR\img\16x16\*.*"
+  RMDir "$INSTDIR\img\16x16"
+  Delete "$INSTDIR\img\*.*"
+  RMDir "$INSTDIR\img"
+  Delete "$INSTDIR\*.*"
+  
   ; Remove shortcuts, if any
   Delete "$SMPROGRAMS\Rossignol\*.*"
 
