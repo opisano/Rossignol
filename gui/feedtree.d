@@ -346,6 +346,26 @@ class FeedTree
 		}
 		else
 		{
+            // Add rename menu
+            MenuItem mnuRename = new MenuItem(m_popupMenu, 0);
+            mnuRename.setText(m_mainWindow.getResourceManager().getText("RENAME"));
+            mnuRename.addSelectionListener(
+                new class SelectionAdapter
+                {
+                    override public void widgetSelected(SelectionEvent e)
+                    {
+                        // get the selected tree item
+                        int selectedCount = m_treeFeeds.getSelectionCount();
+                        if (selectedCount < 1)
+                        {
+                            return;
+                        }
+                        TreeItem selectedItem = m_treeFeeds.getSelection()[0];
+
+                        renameNode(selectedItem);
+                    }
+                });
+            
 			// Add remove menu
 			MenuItem mnuRemove = new MenuItem(m_popupMenu, 0);
             mnuRemove.setText(m_mainWindow.getResourceManager().getText("REMOVE"));
@@ -385,27 +405,6 @@ class FeedTree
 			}
 			else
 			{
-                // Add rename menu
-                MenuItem mnuRename = new MenuItem(m_popupMenu, 0);
-                mnuRename.setText(m_mainWindow.getResourceManager().getText("RENAME"));
-                mnuRename.addSelectionListener(
-                    new class SelectionAdapter
-                    {
-                        override public void widgetSelected(SelectionEvent e)
-                        {
-                            // get the selected tree item
-                            int selectedCount = m_treeFeeds.getSelectionCount();
-                            if (selectedCount < 1)
-                            {
-                                return;
-                            }
-                            TreeItem selectedItem = m_treeFeeds.getSelection()[0];
-
-                            renameNode(selectedItem);
-                        }
-                    });
-
-
 				MenuItem mnuRefresh = new MenuItem(m_popupMenu, 0);
 				mnuRefresh.setText("&Refresh");
 				mnuRefresh.addSelectionListener(new class SelectionAdapter
