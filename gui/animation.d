@@ -19,10 +19,6 @@ Copyright 2013 Olivier Pisano
 
 module gui.animation;
 
-import core.atomic;
-import core.thread;
-import core.time;
-
 import java.lang.Runnable;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.TreeItem;

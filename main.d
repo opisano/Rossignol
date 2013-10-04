@@ -71,8 +71,11 @@ class IPCServerThread : Thread
             foreach (line; lines)
             {
                 // if the other process URLs of feed to add
-                if (line.startsWith("feed://"))
+                if (line.startsWith("feed:"))
                 {
+                    // remove starting feed: or feed:// as it is not understood by cURL
+                    size_t startIndex = line.startsWith("feed:https://") ? 5 : 7;
+
                     // Add the feed (in the GUI thread)
                     m_display.asyncExec(
                         new class Runnable
@@ -83,7 +86,7 @@ class IPCServerThread : Thread
                                 {
                                     if (!m_mainWindow.isDisposed())
                                     {
-                                        m_mainWindow.newFeedItemAction(line[7..$]);
+                                        m_mainWindow.newFeedItemAction(line[startIndex..$]);
                                     }
                                 }
                                 catch (Exception) 

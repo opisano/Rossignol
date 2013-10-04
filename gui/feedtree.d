@@ -19,14 +19,13 @@ Copyright 2013 Olivier Pisano
 
 module gui.feedtree;
 
-import core.thread;
-
 import std.algorithm;
 import std.array;
 import std.conv;
 import std.exception;
 import std.file;
 import std.json;
+import std.parallelism;
 import std.path;
 import std.range;
 import std.regex;
@@ -87,50 +86,43 @@ import system;
 
 
 /**
- * Class responsible for asynchronously update a feed icon 
- * from its URL.
- *
- * TODO : see if I can replace this by a std.parallelism-based solution.
+ * Asynchronously update a TreeItem icon from an URL.
+ * Some feed formats have features to specify a custom icon. This function will
+ * fetch the icon from a URL and set it to the TreeItem.
  */
-class UpdateFeedIconThread : core.thread.Thread
+
+void updateFeedIcon(string imageURL, TreePath path, Tree tree)
 {
-	string m_imageURL;
-	TreePath m_path;
-	Tree     m_tree;
+    immutable(ubyte)[] imageBytes;
+    if (imageURL.startsWith("https:"))
+    {
+        auto http = HTTP();
+        http.caInfo("cert/cacert.pem");
+        imageBytes = assumeUnique(get!(HTTP, ubyte)(imageURL, http));
+    }
+    else
+    {
+        imageBytes = assumeUnique(get!(AutoProtocol, ubyte)(imageURL));
+    }
 
-	void run()
-	{
-		// Only this line is executed in this thread
-		auto imageBytes = assumeUnique(get!(AutoProtocol, ubyte)(m_imageURL));
-
-		// this is executed in the gui thread
-		m_tree.getDisplay().asyncExec(new class Runnable
-			{
-				void run()
-				{
-					TreeItem item = getItemForPath(m_tree, m_path);
-					// Java not knowing about immutable, we must cast immutable away...
-					auto stream = new ByteArrayInputStream(cast(byte[])imageBytes);
-					auto feedImage = new Image(m_tree.getDisplay(), stream);
-					auto data = cast(FeedNodeData)item.getData();
-					if (data is null)
-						return;
-					item.setImage(feedImage);
-					data.m_image = feedImage;
-				}
-			}
-		);
-	}
-
-public:
-	this(string imageURL, TreePath path, Tree tree)
-	{
-		super(&run);
-		m_imageURL = imageURL;
-		m_path = path;
-		m_tree = tree;
-	}
+    // this is executed in the gui thread
+    tree.getDisplay().asyncExec(new class Runnable
+                                  {
+                                      void run()
+                                      {
+                                          TreeItem item = getItemForPath(tree, path);
+                                          // Java not knowing about immutable, we must cast immutable away...
+                                          auto stream = new ByteArrayInputStream(cast(byte[])imageBytes);
+                                          auto feedImage = new Image(tree.getDisplay(), stream);
+                                          auto data = cast(FeedNodeData)item.getData();
+                                          if (data is null)
+                                              return;
+                                          item.setImage(feedImage);
+                                          data.m_image = feedImage;
+                                      }
+                                  });
 }
+
 
 
 bool isFeedNode(TreeItem item)
@@ -716,8 +708,8 @@ public:
             }
 
 			auto path = treePath(feedItem);
-			auto th = new UpdateFeedIconThread(iconUrl, path, m_treeFeeds);
-			th.start();
+            auto updateTask = task!updateFeedIcon(iconUrl, path, m_treeFeeds);
+            updateTask.executeInNewThread();			
 		}
 	}
 

@@ -477,7 +477,18 @@ class MainWindow : AdjustableComponent
 	 */
 	static shared(FeedInfo) getFeedInfo(string feedURL)
 	{
-		string xmlContent = assumeUnique(cast(char[])get!(AutoProtocol, ubyte)(feedURL));
+        string xmlContent;
+        if (feedURL.startsWith("https:"))
+        {
+            auto http = HTTP();
+            http.caInfo("cert/cacert.pem");
+            xmlContent = assumeUnique(cast(char[])get!(HTTP, ubyte)(feedURL, http));
+        }
+        else
+        {
+            xmlContent = assumeUnique(cast(char[])get!(AutoProtocol, ubyte)(feedURL));
+        }
+
 		auto parser = new xml.parser.Parser();
 		auto handler = new FeedContentHandler(feedURL);
 		parser.contentHandler = handler;
@@ -522,7 +533,6 @@ class MainWindow : AdjustableComponent
 
 		auto fi2 = getFeedInfo(fi.getURL());
 		size_t newArticlesCount = fi.add(fi2.getArticles());
-
 	}
 
 	static void removeOldFeedsInItem(MainWindow self, TreeItem ti, shared(FeedInfo) fi, time_t threshold, FeedArticlesTable table, AnimationTimer at)
