@@ -55,7 +55,15 @@ string name_(const ref Attribute attr)
 		return attr.namespace ~ ":" ~ attr.localName;
 }
 
-alias memoize!name_ name;
+version (linux)
+{
+    //to circumvent object.Error: TypeInfo.compare is not implemented
+    alias name_ name;
+}
+else
+{
+    alias memoize!name_ name;
+}
 
 struct Attributes
 {
