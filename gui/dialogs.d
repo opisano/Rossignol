@@ -33,11 +33,13 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Dialog;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Spinner;
 import org.eclipse.swt.widgets.Text;
 
 import gui.mainwindow;
+import system;
 
 /**
  * The type returned by the add feed dialog
@@ -183,13 +185,23 @@ public:
         m_dialog.setBackgroundMode(SWT.INHERIT_FORCE);
 		m_dialog.setLayout(new GridLayout(2, false));
 		m_dialog.setText(m_mainWindow.getResourceManager().getText("ABOUT_ROSSIGNOL"));
-        m_dialog.setSize(512, 384);
+        m_dialog.setSize(540, 406);
 
         auto lblImage = new Label(m_dialog, 0);
         lblImage.setImage(m_image);
         
-        auto lblPrompt = new Label(m_dialog, 0);
-        lblPrompt.setText("Rossignol version 0.3");
+        auto lnkPrompt = new Link(m_dialog, 0);
+        lnkPrompt.setText("<a href=\"http://github.com/opisano/Rossignol\">"
+                          "Rossignol version 0.3\nCopyright© 2013 Olivier Pisano"
+                          "</a>");
+        lnkPrompt.addSelectionListener(
+            new class SelectionAdapter
+            {
+                override public void widgetSelected(SelectionEvent e)
+                {
+                    displayURL("http://github.com/opisano/Rossignol");
+                }
+            });
 
         auto txtLicense = new Text(m_dialog, SWT.BORDER | SWT.MULTI  | SWT.V_SCROLL | SWT.H_SCROLL);
         auto gridData = new GridData(GridData.FILL_BOTH);

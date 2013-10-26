@@ -31,6 +31,8 @@ import org.eclipse.swt.events.MouseAdapter;
 import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.FillLayout;
@@ -49,6 +51,7 @@ import feed;
 import gui.mainwindow;
 import html.html;
 import properties;
+import system;
 
 
 
@@ -119,25 +122,6 @@ bool compByTime(SortOrder order = SortOrder.ascending)(Article a, Article b) pur
 	{
 		return a.getTime() > b.getTime();
 	}
-}
-
-/**
- * OS-dependant facility to open an URL by the user default 
- * browser.
- */
-private void displayURL(string url)
-{
-	version (Windows)
-	{
-		import std.c.windows.windows;
-
-		ShellExecuteA(null, "open".ptr, toStringz(url), null, null, 0);
-	}
-    version (linux)
-    {
-         std.c.stdlib.system(toStringz("xdg-open " ~ url));
-    }
-
 }
 
 /**
@@ -351,7 +335,7 @@ abstract class ArticleTable : AdjustableComponent
 					    label.setForeground(disp.getSystemColor(SWT.COLOR_INFO_FOREGROUND));
 					    label.setBackground(disp.getSystemColor(SWT.COLOR_INFO_BACKGROUND));
 					    label.setData("_TABLEITEM", item);
-					    
+					    label.setFont(m_tblArticles.getFont());
 					    label.setText(content);
 					    label.addListener(SWT.MouseExit, m_labelListener);
 					    label.addListener(SWT.MouseDown, m_labelListener);
@@ -512,6 +496,7 @@ public:
 		props["ARTICLE_TABLE_COL_TITLE_WIDTH"] = to!string(m_colTitle.getWidth());
 		props["ARTICLE_TABLE_COL_AUTHOR_WIDTH"] = to!string(m_colAuthor.getWidth());
 		props["ARTICLE_TABLE_COL_DATE_WIDTH"] = to!string(m_colDate.getWidth());
+        props["ARTICLE_TABLE_FONT"] = m_tblArticles.getFont().getFontData()[0].toString();
 
 		return props;
 	}
@@ -526,6 +511,12 @@ public:
 
 		width = to!int(props.get("ARTICLE_TABLE_COL_DATE_WIDTH", "100"));
 		m_colDate.setWidth(width);
+
+        auto pFont = "ARTICLE_TABLE_FONT" in props;
+        if (pFont)
+        {
+            m_tblArticles.setFont(new Font(m_tblArticles.getDisplay(), new FontData(*pFont)));
+        }
 	}
 
 	alias m_tblArticles this;
